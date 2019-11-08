@@ -84,9 +84,11 @@ class SkyMap():
 class RadialProfile():
     # {{{
     '''
-    class RadialProfile: methods for computing angular correlations in the CMB
+    class RadialProfile
+    methods for computing angular correlations in the CMB
     methods:
-        radialprofile: compuradialprofile: computes the radial profilee
+        set_breaks: select bin scheme for the profile
+        radialprofile: computes the radial profilee
     '''
     def __init__(self, breaks=[0], Nran=0):
 
@@ -110,82 +112,83 @@ class RadialProfile():
         self.breaks = self.breaks * unit
 
     def radialprofile(self, skymap, centers_catalog):
-    """radialprofile(self, skymap) : computes the stacked radial profile of
-    CMB pixels around selected centers
-    Tasks:
-    1. traverse all radial bins
-    2. traverse all centers
-    3. traverse all pixels in the ring
-    4. compute the mean
-    5. store the mean values for all the rings
 
-    Args:
+        """radialprofile(self, skymap) : computes the stacked radial profile of
+        CMB pixels around selected centers
+        Tasks:
+        1. traverse all radial bins
+        2. traverse all centers
+        3. traverse all pixels in the ring
+        4. compute the mean
+        5. store the mean values for all the rings
 
-    skymap (class SkyMap):
-        Map of the cosmic background, including scalar and mask
+        Args:
 
-    centers_catalog (class Centers):
-        Catalog of the centers, including (x, y, z) position
-        in Healpix convention and position angle of the galaxy
-        disk.
+        skymap (class SkyMap):
+            Map of the cosmic background, including scalar and mask
 
-    VIEJO:
+        centers_catalog (class Centers):
+            Catalog of the centers, including (x, y, z) position
+            in Healpix convention and position angle of the galaxy
+            disk.
 
-    nside,fac,rprof,Dsel,vec,hp_data_sel,hp_mask):
-    nside (int): the healpix nside parameter
-    rprof = breaks
-    vec = lista de centros
-    fac =
-    Dsel: sample of galaxies
-    hp_data_sel: temperature
-    hp_mask; mask
+        VIEJO:
 
-    nside  --> skymap.nside
-    rprof  --> self.breaks
-    vec    --> centers_catalog.pos
-    fac
-    Dsel   --> centers_catalog.....
-    hp_data_sel --> CMB temperature map
-    hp_mask     --> CMB mask
+        nside,fac,rprof,Dsel,vec,hp_data_sel,hp_mask):
+        nside (int): the healpix nside parameter
+        rprof = breaks
+        vec = lista de centros
+        fac =
+        Dsel: sample of galaxies
+        hp_data_sel: temperature
+        hp_mask; mask
 
-    Raises:
-    errors?
+        nside  --> skymap.nside
+        rprof  --> self.breaks
+        vec    --> centers_catalog.pos
+        fac
+        Dsel   --> centers_catalog.....
+        hp_data_sel --> CMB temperature map
+        hp_mask     --> CMB mask
 
-    Returns:
-    profdata:
-    proferror:
-    uncertaintydata:
-    uncertaintyerror:
-    """
-    import numpy as np
-    import healpy as hp
-    from scipy.stats import sem, nanmean
+        Raises:
+        errors?
 
-    # convert radii to radians
-    radiifloat = self.breaks.to(u.rad)
+        Returns:
+        profdata:
+        proferror:
+        uncertaintydata:
+        uncertaintyerror:
+        """
+        import numpy as np
+        import healpy as hp
+        from scipy.stats import sem, nanmean
 
-    # initialize
-    profdata = []
+        # convert radii to radians
+        radiifloat = self.breaks.to(u.rad)
 
-    # despues tratamos de paralelizar esto
-    for center in range(glxcat.vec):
+        # initialize
+        profdata = []
 
-        listpixs_internal = []
+        # despues tratamos de paralelizar esto
+        for center in range(glxcat.vec):
 
-        for radiusfloat in radiifloat:
+            listpixs_internal = []
 
-            listpixs_external = hp.query_disc(
-                skymap.nside,
-                center,
-                radiusfloat,
-                inclusive=True,
-                fact=4,
-                nest=False)
+            for radiusfloat in radiifloat:
 
-            listpixs_ring = list(set(listpixs_external) -
-                                 set(listpixs_internal))
-            mean_ring = np.nanmean(skymap[listpix_ring])
-            profdata.append(mean_ring)
-            listpixs_internal = listpixs_external.copy()
+                listpixs_external = hp.query_disc(
+                    skymap.nside,
+                    center,
+                    radiusfloat,
+                    inclusive=True,
+                    fact=4,
+                    nest=False)
+
+                listpixs_ring = list(set(listpixs_external) -
+                                     set(listpixs_internal))
+                mean_ring = np.nanmean(skymap[listpix_ring])
+                profdata.append(mean_ring)
+                listpixs_internal = listpixs_external.copy()
 
     # }}}

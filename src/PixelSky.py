@@ -6,7 +6,13 @@ class SkyUnits():
     from astropy.cosmology import Planck15 as cosmodel
     from astropy import units as u
 
-    def ang2proj(theta, z):
+    def __init__(self, theta=0, z=0., distance=0., glxsize=0.):
+        self.theta = theta
+        self.z = z
+        self.distance = distance
+        self.glxsize = glxsize
+
+    def ang2proj(self, theta, z):
 
         from astropy.cosmology import Planck15 as cosmodel
         from astropy import units as u
@@ -14,19 +20,24 @@ class SkyUnits():
         distance_Mpc = (theta * d_A).to(u.kpc, u.dimensionless_angles())
         return(distance_Mpc)
 
-    def ang2glxsize(theta, z, glxsize):
+    def ang2glxsize(self, theta, z, glxsize):
+        rglxsize=1.
         return(rglxsize)
 
-    def glxsize2ang():
+    def glxsize2ang(self, glxsize):
+        theta=1.
         return(theta)
 
-    def glxsize2proj():
+    def glxsize2proj(self, size):
+        Rp = 1.
         return(Rp)
 
-    def proj2ang():
+    def proj2ang(self, proj):
+        theta=1.
         return(theta)
 
-    def proj2glxsize():
+    def proj2glxsize(self, proj):
+        rglxsize=1.
         return(rglxsize)
 
 
@@ -60,7 +71,6 @@ class SkyMap():
         self.nside = nside
         self.ordering = 'ring'
         self.frame = 'equatorial'
-
         self.npixs = hp.nside2npix(self.nside)
 
         # fac =
@@ -71,10 +81,12 @@ class SkyMap():
         return self.npixs
 
     def __repr__(self):
-        return 'Sky Map with {!s} pixels in {!s} order'.format(self.npixs, self.ordering)
+        return 'Sky Map with {!s} pixels in {!s} order'.format(\
+            self.npixs, self.ordering)
 
     def __str__(self):
-        return 'Sky Map with {!s} pixels in {!s} order'.format(self.npixs, self.ordering)
+        return 'Sky Map with {!s} pixels in {!s} order'.format(\
+            self.npixs, self.ordering)
 
     def load(self, filename, *args, **kwargs):
         '''
@@ -93,7 +105,10 @@ class SkyMap():
         import healpy as hp
 
         d = hp.read_map(filename, h=True, **kwargs)
-        return(d)
+        self.data = d[0]
+        self.header = d[1]
+
+        return(True)
     
     def apply_mask(self, mask):
 
@@ -124,6 +139,7 @@ class RadialProfile():
 
         self.breaks = breaks
         N = len(breaks)-1
+        self.N = N
         self.signal = np.zeros(N)
         self.sigma = np.zeros(N)
 
@@ -138,6 +154,9 @@ class RadialProfile():
         import numpy as np
         self.breaks = np.linspace(*args, **kwargs)
         self.breaks = self.breaks * unit
+        self.N = len(self.breaks)-1
+        self.signal = np.zeros(self.N)
+        self.sigma = np.zeros(self.N)
 
     def radialprofile(self, skymap, skymask, centers_catalog):
         """radialprofile(self, skymap) : computes the stacked radial profile of
@@ -170,35 +189,55 @@ class RadialProfile():
         """
         import numpy as np
         import healpy as hp
-        from scipy.stats import sem, nanmean
+        import astropy.units as u
 
         # convert radii to radians
         radiifloat = self.breaks.to(u.rad)
 
         # initialize
-        profdata = []
+        profsingles = []
 
-        # despues tratamos de paralelizar esto
-        for center in range(glxcat.vec):
+# with Parallel(n_jobs=2) as parallel:
+# ...    accumulator = 0.
+# ...    n_iter = 0
+# ...    while accumulator < 1000:
+# ...        results = parallel(delayed(sqrt)(accumulator + i ** 2)
+# ...                           for i in range(5))
+# ...        accumulator += sum(results)  # synchronization barrier
+# ...        n_iter += 1
+
+
+        from tqdm import tqdm
+
+
+        for center in tqdm(centers_catalog.vec[0:100]):
 
             listpixs_internal = []
             listpixs_mask = []
+            profsingle = []
+            first = True
 
             for radiusfloat in radiifloat:
-
                 listpixs_external = hp.query_disc(
                     skymap.nside,
                     center,
-                    radiusfloat,
+                    radiusfloat.value,
                     inclusive=True,
                     fact=4,
                     nest=False)
 
-                listpixs_ring = list(set(listpixs_external) -
-                                     set(listpixs_internal))
-                listpixs_mask = skymask[0][listpixs_ring]
-                mean_ring = np.nanmean(skymap[listpix_ring])
-                profdata.append(mean_ring)
+                if(not first):
+                    listpixs_ring = list(set(listpixs_external) -
+                                        set(listpixs_internal))
+                    listpixs_mask = skymask.data[listpixs_ring]
+                    mean_ring = np.nanmean(skymap.data[listpixs_ring])
+                    profsingle.append(mean_ring)
+                first = False
                 listpixs_internal = listpixs_external.copy()
+
+            profsingles.append(profsingle)
+        profsingles = np.array(profsingles)
+        self.signal = np.nanmean(profsingles, 0)
+        self.sigma = np.nanstd(profsingles, 0)
 
     # }}}

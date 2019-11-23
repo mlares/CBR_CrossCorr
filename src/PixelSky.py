@@ -125,9 +125,13 @@ class SkyMap():
         masked_map = hp.ma(m)
         return(masked_map)
 
-
     # }}}
 
+
+# esto es para que ande en paralelo,
+# ver: http://qingkaikong.blogspot.com/2016/12/python-parallel-method-in-class.html
+def unwrap_self(arg, **kwarg):
+    return RadialProfile.radialprofile(*arg, **kwarg)
 
 class RadialProfile():
     # {{{
@@ -160,7 +164,7 @@ class RadialProfile():
         self.signal = np.zeros(self.N)
         self.sigma = np.zeros(self.N)
 
-    def radialprofile(self, skymap, skymask, centers_catalog_pos):
+    def radialprofile(self, centers_catalog_pos, skymap, skymask):
         """radialprofile(self, skymap) : computes the stacked radial profile of
         CMB pixels around selected centers
 
@@ -192,97 +196,52 @@ class RadialProfile():
         import numpy as np
         import healpy as hp
         import astropy.units as u
+        import time
 
-        # convert radii to radians
         radiifloat = self.breaks.to(u.rad)
-
-        # initialize
         profsingles = []
 
-        from tqdm import tqdm
-
-
-        for center in tqdm(centers_catalog_pos[0:100]):
+        #from tqdm import tqdm
+        #for center in tqdm(centers_catalog_pos[0:100]):
+        for center in centers_catalog_pos[0:5]:
 
             listpixs_internal = []
             listpixs_mask = []
             profsingle = []
             first = True
 
-            for radiusfloat in radiifloat:
-                listpixs_external = hp.query_disc(
-                    skymap.nside,
-                    center,
-                    radiusfloat.value,
-                    inclusive=True,
-                    fact=4,
-                    nest=False)
+            print(center)
+            print('.....')
+            time.sleep(1)
 
-                if(not first):
-                    listpixs_ring = list(set(listpixs_external) -
-                                        set(listpixs_internal))
-                    listpixs_mask = skymask.data[listpixs_ring]
-                    mean_ring = np.nanmean(skymap.data[listpixs_ring])
-                    profsingle.append(mean_ring)
-                first = False
-                listpixs_internal = listpixs_external.copy()
+            #for radiusfloat in radiifloat:
+                #listpixs_external = hp.query_disc(
+                #    skymap.nside,
+                #    center,
+                #    radiusfloat.value,
+                #    inclusive=True,
+                #    fact=4,
+                #    nest=False)
+
+                #if(not first):
+                #    listpixs_ring = list(set(listpixs_external) -
+                #                        set(listpixs_internal))
+                #    listpixs_mask = skymask.data[listpixs_ring]
+                #    mean_ring = np.nanmean(skymap.data[listpixs_ring])
+                #    profsingle.append(mean_ring)
+                #first = False
+                #listpixs_internal = listpixs_external.copy()
 
             profsingles.append(profsingle)
         profsingles = np.array(profsingles)
-        #self.signal = np.nanmean(profsingles, 0)
-        #self.sigma = np.nanstd(profsingles, 0)
         return(profsingles)
 
-
-
-
-    def radialprofile_II(self, skymap, skymask, centers_catalog):
-            """radialprofile(self, skymap) : computes the stacked radial profile of
-            CMB pixels around selected centers. PARALLEL version
-
-            Tasks:
-            1. traverse all centers (paralalize here)
-            2. traverse all radial bins
-            3. traverse all pixels in the ring
-            4. compute the mean
-            5. store the mean values for all the rings
-
-            Args:
-                skymap (class SkyMap):
-                Map of the cosmic background, including scalar and mask
-
-                centers_catalog (class Centers):
-                Catalog of the centers, including (x, y, z) position
-                in Healpix convention and position angle of the galaxy
-                disk.
-
-            Raises:
-                errors?
-
-            Returns:
-                profdata:
-                proferror:
-                uncertaintydata:
-                uncertaintyerror:
-            """
-            import numpy as np
-            import healpy as hp
-            import astropy.units as u
-            import joblib
-
-            radiifloat = self.breaks.to(u.rad)
-            profsingles = []
-
-            #from tqdm import tqdm
-
-            idxs = range(len(centers_catalog))
-            with joblib.Parallel(n_jobs=10, prefer='threads') as parallel:
-                results = parallel(
-                    joblib.delayed(self.radialprofile)(                   
-                        skymap, skymask, centers_catalog.vec(idx)) for idx in idxs)
-    
-            #profsingles = np.array(profsingles)
-            #self.signal = np.nanmean(profsingles, 0)
-            #self.sigma = np.nanstd(profsingles, 0)
+    def run_radialprofile(self, centers, smap, smask):
+        from joblib import Parallel, delayed
+        results = []
+        results = Parallel(n_jobs=2, verbose=False, backend="threading")\
+            (delayed(unwrap_self)(i, skymap=smap, skymask=smask)
+                    for i in centers )
+        return(results)
 
     # }}}

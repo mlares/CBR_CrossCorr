@@ -39,7 +39,12 @@ rp.set_breaks(unit=u.arcmin, start=0., stop=30., num=10)
 
 #rp.radialprofile(mapa, mask, glx)
 
-rp.radialprofile_II(mapa, mask, glx)
+# rp.radialprofile_II(glx.vec, mapa, mask)
+
+pos = np.array(list(glx.vec))
+rp.run_radialprofile(pos, mapa, mask)
+
+
 
 print(rp.signal)
 print(rp.sigma)

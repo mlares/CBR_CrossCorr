@@ -21,37 +21,42 @@ class SkyUnits():
         return(distance_Mpc)
 
     def ang2glxsize(self, theta, z, glxsize):
+        # in development (always compute??)
         rglxsize=1.
         return(rglxsize)
 
     def glxsize2ang(self, glxsize):
+        # in development (always compute??)
         theta=1.
         return(theta)
 
     def glxsize2proj(self, size):
+        # in development (always compute??)
         Rp = 1.
         return(Rp)
 
     def proj2ang(self, proj):
+        # in development (always compute??)
         theta=1.
         return(theta)
 
     def proj2glxsize(self, proj):
+        # in development (always compute??)
         rglxsize=1.
         return(rglxsize)
 
 
-class Centers():
-    '''
-    class SkyMap: methods for computing angular correlations in the CMB
-    methods:
-        load: loads a CMB map
-    '''
-
-    import healpy as hp
-
-    def __init__(self, pos):
-        self.pos = pos
+#class Centers():
+#    '''
+#    class SkyMap: methods for computing angular correlations in the CMB
+#    methods:
+#        load: loads a CMB map
+#    '''
+#
+#    import healpy as hp
+#
+#    def __init__(self, pos):
+#        self.pos = pos
 
 
 class SkyMap():
@@ -146,9 +151,6 @@ class RadialProfile():
         self.controlsample_mean = np.zeros(N)
         self.controlsample_sigma = np.zeros(N)
 
-    def print(self):
-        print(self.breaks)
-
     def set_breaks(self, unit, *args, **kwargs):
 
         import numpy as np
@@ -158,7 +160,7 @@ class RadialProfile():
         self.signal = np.zeros(self.N)
         self.sigma = np.zeros(self.N)
 
-    def radialprofile(self, skymap, skymask, centers_catalog):
+    def radialprofile(self, skymap, skymask, centers_catalog_pos):
         """radialprofile(self, skymap) : computes the stacked radial profile of
         CMB pixels around selected centers
 
@@ -197,20 +199,10 @@ class RadialProfile():
         # initialize
         profsingles = []
 
-# with Parallel(n_jobs=2) as parallel:
-# ...    accumulator = 0.
-# ...    n_iter = 0
-# ...    while accumulator < 1000:
-# ...        results = parallel(delayed(sqrt)(accumulator + i ** 2)
-# ...                           for i in range(5))
-# ...        accumulator += sum(results)  # synchronization barrier
-# ...        n_iter += 1
-
-
         from tqdm import tqdm
 
 
-        for center in tqdm(centers_catalog.vec[0:100]):
+        for center in tqdm(centers_catalog_pos[0:100]):
 
             listpixs_internal = []
             listpixs_mask = []
@@ -237,7 +229,60 @@ class RadialProfile():
 
             profsingles.append(profsingle)
         profsingles = np.array(profsingles)
-        self.signal = np.nanmean(profsingles, 0)
-        self.sigma = np.nanstd(profsingles, 0)
+        #self.signal = np.nanmean(profsingles, 0)
+        #self.sigma = np.nanstd(profsingles, 0)
+        return(profsingles)
+
+
+
+
+    def radialprofile_II(self, skymap, skymask, centers_catalog):
+            """radialprofile(self, skymap) : computes the stacked radial profile of
+            CMB pixels around selected centers. PARALLEL version
+
+            Tasks:
+            1. traverse all centers (paralalize here)
+            2. traverse all radial bins
+            3. traverse all pixels in the ring
+            4. compute the mean
+            5. store the mean values for all the rings
+
+            Args:
+                skymap (class SkyMap):
+                Map of the cosmic background, including scalar and mask
+
+                centers_catalog (class Centers):
+                Catalog of the centers, including (x, y, z) position
+                in Healpix convention and position angle of the galaxy
+                disk.
+
+            Raises:
+                errors?
+
+            Returns:
+                profdata:
+                proferror:
+                uncertaintydata:
+                uncertaintyerror:
+            """
+            import numpy as np
+            import healpy as hp
+            import astropy.units as u
+            import joblib
+
+            radiifloat = self.breaks.to(u.rad)
+            profsingles = []
+
+            #from tqdm import tqdm
+
+            idxs = range(len(centers_catalog))
+            with joblib.Parallel(n_jobs=10, prefer='threads') as parallel:
+                results = parallel(
+                    joblib.delayed(self.radialprofile)(                   
+                        skymap, skymask, centers_catalog.vec(idx)) for idx in idxs)
+    
+            #profsingles = np.array(profsingles)
+            #self.signal = np.nanmean(profsingles, 0)
+            #self.sigma = np.nanstd(profsingles, 0)
 
     # }}}

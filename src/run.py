@@ -37,7 +37,9 @@ subset = spiral & edgeon
 rp = pxs.RadialProfile()
 rp.set_breaks(unit=u.arcmin, start=0., stop=30., num=10)
 
-rp.radialprofile(mapa, mask, glx)
+#rp.radialprofile(mapa, mask, glx)
+
+rp.radialprofile_II(mapa, mask, glx)
 
 print(rp.signal)
 print(rp.sigma)
@@ -69,25 +71,11 @@ print('--------------')
 #     print(a+b+c)
 """ 
 
-"""
-import PixelSky as pxs
-import pandas as pd
-import healpy as hp
-import numpy as np
-from astropy import units as u
-
-import joblib # import Parallel, delayed
-
-import importlib
-pxs = importlib.reload(pxs)
-
-# Read CMB temperature map
-nside = 512
-mapa = pxs.SkyMap(nside)
-mask = pxs.SkyMap(nside)
-
-filename = '../dat/lensmap512_10arcmin_y2.fits'
-mapa.load(filename, field=(0))
-filename = '../dat/lensmask512_10arcmin_y2.fits'
-mask.load(filename, field=(0))
-"""
+# with Parallel(n_jobs=2) as parallel:
+# ...    accumulator = 0.
+# ...    n_iter = 0
+# ...    while accumulator < 1000:
+# ...        results = parallel(delayed(sqrt)(accumulator + i ** 2)
+# ...                           for i in range(5))
+# ...        accumulator += sum(results)  # synchronization barrier
+# ...        n_iter += 1

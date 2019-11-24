@@ -1,3 +1,26 @@
+# 
+# # esto es para que ande en paralelo,
+# # ver: http://qingkaikong.blogspot.com/2016/12/python-parallel-method-in-class.html
+# def unwrap_self(arg, **kwarg):
+#     return RadialProfile.radialprofile(*arg, **kwarg)
+# 
+# idxs = range(len(centers_catalog))
+# with joblib.Parallel(n_jobs=10, prefer='threads') as parallel:
+#     results = parallel(
+#         joblib.delayed(self.radialprofile)(                   
+#             skymap, skymask, centers_catalog.vec(idx)) for idx in idxs)
+#  
+
+
+#with Parallel(n_jobs=2) as parallel:
+#    accumulator = 0.
+#    n_iter = 0
+#    while accumulator < 1000:
+#        results = parallel(delayed(sqrt)(accumulator + i ** 2)
+#                           for i in range(5))
+#        accumulator += sum(results)  # synchronization barrier
+#        n_iter += 1
+
 class SkyUnits():
     '''
     Transform units in the sky for a given cosmology
@@ -44,6 +67,20 @@ class SkyUnits():
         # in development (always compute??)
         rglxsize=1.
         return(rglxsize)
+
+
+#class Centers():
+#    '''
+#    class SkyMap: methods for computing angular correlations in the CMB
+#    methods:
+#        load: loads a CMB map
+#    '''
+#
+#    import healpy as hp
+#
+#    def __init__(self, pos):
+#        self.pos = pos
+
 
 class SkyMap():
     # {{{
@@ -113,20 +150,50 @@ class SkyMap():
 
     # }}}
          
+
+
+
+
+
 from joblib import Parallel, delayed
+import time
+import numpy as np
+
+#class A( object ):
+#
+#    def __init__( self, x ):
+#        self.x = x
+#        self.y = "Defined on .__init__()"
+#
+#    def p( self ):
+#        self.y = self.x**2
+#
+#def aNormalFUN( aValueOfX ):
+#    return aValueOfX * aValueOfX
+#
+#def aContainerFUN( aPayloadOBJECT ):
+#    aPayloadOBJECT.p()
+#
+#
+#
+#if __name__ == '__main__':
+#
+#     runs = range(11, 21)
+#     results = Parallel( n_jobs = 2)( delayed( aNormalFUN )( aParameterX ) 
+#             for aParameterX in runs )
+#     print(results)
+# 
+#
+#     runs = [ A( x ) for x in range( 11, 21 ) ]
+#     results = Parallel( n_jobs = 2)( delayed( aContainerFUN )( aPayloadOBJECT ) 
+#             for aPayloadOBJECT in runs)
+#     print(results)
+
 
 def unwrap_self(arg, **kwarg):
     return RadialProfile.radialprofile(*arg, **kwarg)
 
 class RadialProfile:
-    # {{{
-    '''
-    class RadialProfile
-    methods for computing angular correlations in the CMB
-    methods:
-        set_breaks: select bin scheme for the profile
-        radialprofile: computes the radial profilee
-    ''' 
 
     def __init__(self, breaks=[0], Nran=0):
 
@@ -150,34 +217,6 @@ class RadialProfile:
         self.sigma = np.zeros(self.N)
  
     def radialprofile(self, center, skymap, skymask):
-        """radialprofile(self, skymap) : computes the stacked radial profile of
-        CMB pixels around selected centers
-
-        Tasks:
-        1. traverse all centers (paralalize here)
-        2. traverse all radial bins
-        3. traverse all pixels in the ring
-        4. compute the mean
-        5. store the mean values for all the rings
-
-        Args:
-            skymap (class SkyMap):
-            Map of the cosmic background, including scalar and mask
-
-            centers_catalog (class Centers):
-            Catalog of the centers, including (x, y, z) position
-            in Healpix convention and position angle of the galaxy
-            disk.
-
-        Raises:
-            errors?
-
-        Returns:
-            profdata:
-            proferror:
-            uncertaintydata:
-            uncertaintyerror:
-        """ 
 
         # en la version paralela hace un solo centro cada vez
         # que estra a esta funcion
@@ -213,12 +252,30 @@ class RadialProfile:
         return(profile)
 
      
-    def radialprofile_II(self, centers, skymap, skymask):
+    def run_radialprofile(self, centers, amapa, amask):
         results = []
 
-        results = Parallel(n_jobs=1, verbose=5, backend="threading")\
-            (delayed(unwrap_self)(i, skymap=skymap, skymask=skymask) 
+        results = Parallel(n_jobs=2, verbose=False, backend="threading")\
+            (delayed(unwrap_self)(i, skymap=amapa, skymask=amask) 
                     for i in zip([self]*len(centers), centers))
 
         return(results)
 
+
+
+## paralelize multiparameter:
+#from math import sqrt
+#from joblib import Parallel, delayed
+#Parallel(n_jobs=2)(delayed(sqrt)(i ** 2) for i in list(range(10)))
+##[0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]
+
+# para que ande tqdm con joblib:                                              
+# with Parallel(n_jobs=2) as parallel:
+# ...    accumulator = 0.
+# ...    n_iter = 0
+# ...    while accumulator < 1000:
+# ...        results = parallel(delayed(sqrt)(accumulator + i ** 2)
+# ...                           for i in range(5))
+# ...        accumulator += sum(results)  # synchronization barrier
+# ...        n_iter += 1
+ 

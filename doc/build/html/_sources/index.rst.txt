@@ -23,8 +23,6 @@ Project by Heliana Luparello, Diego Garcia Lambas, Ezequiel Boero & Marcelo Lare
    api/pixelsky
 
 
-
-
 Indices and tables
 ==================
 

@@ -1,0 +1,5 @@
+proposal
+===========
+
+La idea es... 
+

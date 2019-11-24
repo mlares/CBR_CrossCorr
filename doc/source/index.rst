@@ -1,0 +1,31 @@
+.. CBR_CrossCorr documentation master file, created by
+   sphinx-quickstart on Sun Nov 24 15:10:31 2019.
+   You can adapt this file completely to your liking, but it should at least
+   contain the root `toctree` directive.
+
+Welcome to CBR_CrossCorr's documentation!
+=========================================
+ 
+Cross correlations between selected centers and the cosmic background radiation
+
+Project by Heliana Luparello, Diego Garcia Lambas, Ezequiel Boero & Marcelo Lares
+ 
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Contents:
+
+   sci/proposal
+   sci/references
+
+   api/usage
+   api/todo
+   api/pixelsky
+
+
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`

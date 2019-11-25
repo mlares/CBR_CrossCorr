@@ -148,9 +148,10 @@ class RadialProfile:
         self.N = len(self.breaks)-1
         self.signal = np.zeros(self.N)
         self.sigma = np.zeros(self.N)
- 
-    def radialprofile(self, center, skymap, skymask):
-        """radialprofile(self, skymap) : computes the stacked radial profile of
+
+
+    def radialprofile_stack(self, center, skymap, skymask):
+        """radialprofile_stack(self, skymap) : computes the stacked radial profile of
         CMB pixels around selected centers
 
         Tasks:
@@ -212,11 +213,77 @@ class RadialProfile:
 
         return(profile)
 
+      
+
+ 
+    def radialprofile(self, center, skymap, skymask):
+        """radialprofile(self, skymap) : computes the radial profile of
+        CMB pixels around a selected center
+
+        Tasks:
+        1. traverse all centers (paralalize here)
+        2. traverse all radial bins
+        3. traverse all pixels in the ring
+        4. compute the mean
+        5. store the mean values for all the rings
+
+        Args:
+            skymap (class SkyMap):
+            Map of the cosmic background, including scalar and mask
+
+            centers_catalog (class Centers):
+            Catalog of the centers, including (x, y, z) position
+            in Healpix convention and position angle of the galaxy
+            disk.
+
+        Raises:
+            errors?
+
+        Returns:
+            profdata:
+            proferror:
+            uncertaintydata:
+            uncertaintyerror:
+        """ 
+
+        # en la version paralela hace un solo centro cada vez
+        # que estra a esta funcion
+        import numpy as np
+        import healpy as hp
+        import astropy.units as u
+        import time
+
+        radiifloat = self.breaks.to(u.rad)
+        listpixs_internal = []
+        listpixs_mask = []
+        profile = []
+        first = True
+
+        for radiusfloat in radiifloat:
+            listpixs_external = hp.query_disc(
+                skymap.nside,
+                center,
+                radiusfloat.value,
+                inclusive=True,
+                fact=4,
+                nest=False)
+
+            if(not first):
+                listpixs_ring = list(set(listpixs_external) -
+                                    set(listpixs_internal))
+                listpixs_mask = skymask.data[listpixs_ring]
+                mean_ring = np.nanmean(skymap.data[listpixs_ring])
+                profile.append(mean_ring)
+            first = False
+            listpixs_internal = listpixs_external.copy()
+
+        return(profile)
+
      
-    def radialprofile_II(self, centers, skymap, skymask):
+    def radialprofile_II(self, centers, skymap, skymask, njobs):
         results = []
 
-        results = Parallel(n_jobs=1, verbose=5, backend="threading")\
+        results = Parallel(n_jobs=njobs, verbose=5, backend="threading")\
             (delayed(unwrap_self)(i, skymap=skymap, skymask=skymask) 
                     for i in zip([self]*len(centers), centers))
 

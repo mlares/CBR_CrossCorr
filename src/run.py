@@ -16,32 +16,40 @@ import time
 # https://docs.python.org/3/library/configparser.html
 # https://tomassetti.me/parsing-in-python/#tools
 
+#_________________________________________
+# Parse parameters from configuration file
 
-#________________________________
+import configparser
+
+config = configparser.ConfigParser()
+config.read('../set/config.ini')
+
+
+#_________________________________________
 # Read CMB temperature map and mask
 
-nside = 512
+nside = int(config['maps']['filedata_cmb_nside'])
 mapa = pxs.SkyMap(nside)
 mask = pxs.SkyMap(nside)
 
-# small map
 # filename = '../dat/lensmap512_10arcmin_y2.fits'
 # mapa.load(filename, field=(0))
 # filename = '../dat/lensmask512_10arcmin_y2.fits'
 # mask.load(filename, field=(0))
 
 
-# large map
-filename = '../dat/COM_CMB_IQU-smica_2048_R3.00_full.fits'
-mapa.load(filename, field=(0))
-mask.load(filename, field=(3))
+filedata = config['maps']['datadir_cmb']+ config['maps']['filedata_cmb_mapa']
+mapa.load(filedata, field=( int(config['maps']['filedata_field_mapa']) ))
+
+filedata = config['maps']['datadir_cmb']+ config['maps']['filedata_cmb_mask']
+mask.load(filedata, field=( int(config['maps']['filedata_field_mask']) ))
 
 
 #________________________________
 # Galaxy catalog
 
 # read...
-glx_catalog = '../dat/2mrs_1175_done.dat'
+glx_catalog = config['cats']['datadir_glx']+config['cats']['filedata_glx']
 glx = pd.read_csv(glx_catalog, delim_whitespace=True, header=9)
 # catalog: http://tdc-www.harvard.edu/2mrs/2mrs_readme.html
 
@@ -86,6 +94,11 @@ rp.sigma = np.std(res, 1)
 #
 #glx['vec'] = np.array(y)
 
+#def sample_spherical(npoints, ndim=3):
+#    vec = np.random.randn(ndim, npoints)
+#    vec /= np.linalg.norm(vec, axis=0)
+#    return vec
+
 #CS = pxs.RadialProfile()
 #CS.set_breaks(unit=u.arcmin, start=0., stop=30., num=5)
 #
@@ -98,5 +111,12 @@ rp.sigma = np.std(res, 1)
 #________________________________
 # Save results
 import pickle
+         
+if config['out']['save_pickle']:
+    filedata = config['out']['output_dir']+\
+               config['out']['pickle_name_root']+\
+               config['out']['pickle_name_exp']+\
+               config['out']['pickle_name_idx']+'.p'
+     
+    pickle.dump( rp, open( filedata, "wb" ) )
 
-pickle.dump( rp, open( "rp_run__tst.p", "wb" ) )

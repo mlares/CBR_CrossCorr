@@ -23,7 +23,7 @@ import time
 
 import configparser
 config = configparser.ConfigParser()
-config.read('../set/config.ini')
+config.read('../set/config_small.ini')
 
 #_________________________________________
 # Read CMB temperature map and mask

@@ -1,1 +1,7 @@
 sphinx
+numpy
+scipy
+pandas
+astropy
+healpy
+joblib

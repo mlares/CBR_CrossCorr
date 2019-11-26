@@ -18,12 +18,12 @@ import time
 
 #_________________________________________
 # Parse parameters from configuration file
+# todo: override from command line
+# https://stackoverflow.com/questions/3609852/which-is-the-best-way-to-allow-configuration-options-be-overridden-at-the-comman
 
 import configparser
-
 config = configparser.ConfigParser()
 config.read('../set/config.ini')
-
 
 #_________________________________________
 # Read CMB temperature map and mask
@@ -31,12 +31,6 @@ config.read('../set/config.ini')
 nside = int(config['maps']['filedata_cmb_nside'])
 mapa = pxs.SkyMap(nside)
 mask = pxs.SkyMap(nside)
-
-# filename = '../dat/lensmap512_10arcmin_y2.fits'
-# mapa.load(filename, field=(0))
-# filename = '../dat/lensmask512_10arcmin_y2.fits'
-# mask.load(filename, field=(0))
-
 
 filedata = config['maps']['datadir_cmb']+ config['maps']['filedata_cmb_mapa']
 mapa.load(filedata, field=( int(config['maps']['filedata_field_mapa']) ))
@@ -71,11 +65,17 @@ centers = np.array(list(glx.vec))
 # Radial profile
 
 rp = pxs.RadialProfile()
-rp.set_breaks(unit=u.arcmin, start=0., stop=100., num=5)
-res = rp.radialprofile_II(centers, mapa, mask, 15)
+nbins = int(config['run']['rp_n_bins']) 
+start = float(config['run']['rp_start']) 
+stop = float(config['run']['rp_stop']) 
+rp.set_breaks(unit=u.arcmin, start=start, stop=stop, num=nbins+1)
+
+
+
+njobs = int(config['run']['n_jobs']) 
+res = rp.radialprofile_II(centers, mapa, mask, njobs)
 rp.signal = np.mean(res, 1)
 rp.sigma = np.std(res, 1)
-
 
 
 #________________________________

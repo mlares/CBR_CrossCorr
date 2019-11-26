@@ -56,3 +56,6 @@ html_theme = 'pyramid'
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
+# for readthedocs:
+master_doc = 'index'
+

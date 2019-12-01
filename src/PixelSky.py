@@ -1,4 +1,5 @@
 class SkyUnits():
+    #{{{
     '''
     Transform units in the sky for a given cosmology
     '''
@@ -44,6 +45,8 @@ class SkyUnits():
         # in development (always compute??)
         rglxsize=1.
         return(rglxsize)
+    #}}}
+
 
 class SkyMap():
     # {{{
@@ -115,8 +118,12 @@ class SkyMap():
          
 from joblib import Parallel, delayed
 
-def unwrap_self(arg, **kwarg):
+def unwrap_profile_self(arg, **kwarg):
     return RadialProfile.radialprofile(*arg, **kwarg)
+
+def unwrap_correlation_self(arg, **kwarg):
+    return Correlation.correlation(*arg, **kwarg)
+
 
 class RadialProfile:
     # {{{
@@ -129,7 +136,7 @@ class RadialProfile:
     ''' 
 
     def __init__(self, breaks=[0], Nran=0):
-
+        #{{{
         import numpy as np
 
         self.breaks = breaks
@@ -139,8 +146,10 @@ class RadialProfile:
         self.sigma = np.zeros(N)
         self.controlsample_mean = np.zeros(N)
         self.controlsample_sigma = np.zeros(N)
+        #}}} 
  
     def set_breaks(self, unit, *args, **kwargs):
+        #{{{
 
         import numpy as np
         self.breaks = np.linspace(*args, **kwargs)
@@ -148,9 +157,10 @@ class RadialProfile:
         self.N = len(self.breaks)-1
         self.signal = np.zeros(self.N)
         self.sigma = np.zeros(self.N)
-
+        #}}} 
 
     def radialprofile_stack(self, center, skymap, skymask):
+        #{{{
         """radialprofile_stack(self, skymap) : computes the stacked radial profile of
         CMB pixels around selected centers
 
@@ -212,11 +222,10 @@ class RadialProfile:
             listpixs_internal = listpixs_external.copy()
 
         return(profile)
+        #}}}
 
-      
-
- 
     def radialprofile(self, center, skymap, skymask):
+        #{{{
         """radialprofile(self, skymap) : computes the radial profile of
         CMB pixels around a selected center
 
@@ -278,14 +287,130 @@ class RadialProfile:
             listpixs_internal = listpixs_external.copy()
 
         return(profile)
-
+        #}}}
      
     def radialprofile_II(self, centers, skymap, skymask, njobs):
+        #{{{
         results = []
 
         results = Parallel(n_jobs=njobs, verbose=5, backend="threading")\
-            (delayed(unwrap_self)(i, skymap=skymap, skymask=skymask) 
+            (delayed(unwrap_profile_self)(i, skymap=skymap, skymask=skymask) 
                     for i in zip([self]*len(centers), centers))
 
         return(results)
+        #}}} 
+    #}}}
 
+
+class Correlation:
+    # {{{
+    '''
+    class Correlation
+    methods for computing angular correlations in the CMB
+    methods:
+        set_breaks: select bin scheme for the profile
+        radialprofile: computes the radial profilee
+    ''' 
+
+    def __init__(self, breaks=[0], Nran=0):
+        #{{{
+        import numpy as np
+
+        self.breaks = breaks
+        N = len(breaks)-1
+        self.N = N
+        self.signal = np.zeros(N)
+        self.sigma = np.zeros(N)
+        self.controlsample_mean = np.zeros(N)
+        self.controlsample_sigma = np.zeros(N)
+        #}}}
+ 
+    def set_breaks(self, unit, *args, **kwargs):
+        #{{{
+        import numpy as np
+        self.breaks = np.linspace(*args, **kwargs)
+        self.breaks = self.breaks * unit
+        self.N = len(self.breaks)-1
+        self.signal = np.zeros(self.N)
+        self.sigma = np.zeros(self.N)
+        #}}}
+
+    def correlation_stack(self, skymap, skymask, nside, Nran):
+        #{{{
+
+        # en la version paralela hace un solo centro cada vez
+        # que estra a esta funcion
+        import numpy as np
+        import healpy as hp
+        import astropy.units as u
+        import time
+        import random
+
+        Max_Pix_ID = hp.nside2npix(nside)
+
+        # draw a set of Nran pixel pairs
+        x = np.array([random.random() for _ in range(Nran*2)])
+        x = x*Max_Pix_ID
+        x = x.astype(int)
+        x = x.reshape((-1, 2))
+
+        # compute frequency
+        coso = np.zeros(Nran)
+        tt = np.zeros(Nran)
+        for j, idxs in enumerate(x):
+            v1 = hp.pix2vec(nside, idxs[0])
+            v2 = hp.pix2vec(nside, idxs[1])
+            coso[j] = np.dot(v1,v2)
+            tt[j] = skymap.data[idxs[0]]*skymap.data[idxs[1]]
+
+        H = np.histogram2d(coso, tt, [self.breaks, [-10., 1000.]])[0]
+        res = np.sum(H, 1).flatten()
+        return(res)
+        #}}}
+ 
+    def correlation(self, job, skymap, skymask, nside, Nran):
+        #{{{
+        # en la version paralela hace un solo centro cada vez
+        # que estra a esta funcion
+        import numpy as np
+        import healpy as hp
+        import astropy.units as u
+        import time
+        import random
+
+        Max_Pix_ID = hp.nside2npix(nside)
+
+        # draw a set of Nran pixel pairs
+        x = np.array([random.random() for _ in range(Nran*2)])
+        x = x*Max_Pix_ID
+        x = x.astype(int)
+        x = x.reshape((-1, 2))
+
+        # compute frequency
+        coso = np.zeros(Nran)
+        tt = np.zeros(Nran)
+        for j, idxs in enumerate(x):
+            v1 = hp.pix2vec(nside, idxs[0])
+            v2 = hp.pix2vec(nside, idxs[1])
+            coso[j] = np.dot(v1,v2)
+            tt[j] = skymap.data[idxs[0]]*skymap.data[idxs[1]]
+
+        H = np.histogram2d(coso, tt, [self.breaks, [-10., 1000.]])[0]
+        res = np.sum(H, 1).flatten()
+        return(res)
+ 
+
+        #}}}
+     
+    def correlation_II(self, centers, skymap, skymask, nside, Nran, njobs):
+        #{{{
+        results = []
+
+        results = Parallel(n_jobs=njobs, verbose=5, backend="loky")\
+            (delayed(unwrap_correlation_self)(i, skymap=skymap,
+                skymask=skymask, nside=nside, Nran=Nran) 
+                    for i in zip([self]*len(centers), centers))
+
+        return(results)
+        #}}}
+    #}}}

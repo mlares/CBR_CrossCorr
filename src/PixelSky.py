@@ -303,7 +303,7 @@ class RadialProfile:
 
 
 class Correlation:
-    # {{{
+    #{{{
     '''
     class Correlation
     methods for computing angular correlations in the CMB
@@ -335,40 +335,7 @@ class Correlation:
         self.sigma = np.zeros(self.N)
         #}}}
 
-    def correlation_stack(self, skymap, skymask, nside, Nran):
-        #{{{
-
-        # en la version paralela hace un solo centro cada vez
-        # que estra a esta funcion
-        import numpy as np
-        import healpy as hp
-        import astropy.units as u
-        import time
-        import random
-
-        Max_Pix_ID = hp.nside2npix(nside)
-
-        # draw a set of Nran pixel pairs
-        x = np.array([random.random() for _ in range(Nran*2)])
-        x = x*Max_Pix_ID
-        x = x.astype(int)
-        x = x.reshape((-1, 2))
-
-        # compute frequency
-        coso = np.zeros(Nran)
-        tt = np.zeros(Nran)
-        for j, idxs in enumerate(x):
-            v1 = hp.pix2vec(nside, idxs[0])
-            v2 = hp.pix2vec(nside, idxs[1])
-            coso[j] = np.dot(v1,v2)
-            tt[j] = skymap.data[idxs[0]]*skymap.data[idxs[1]]
-
-        H = np.histogram2d(coso, tt, [self.breaks, [-10., 1000.]])[0]
-        res = np.sum(H, 1).flatten()
-        return(res)
-        #}}}
- 
-    def correlation(self, job, skymap, skymask, nside, Nran):
+    def correlation(self, k, skymap, skymask, nside, Nran):
         #{{{
         # en la version paralela hace un solo centro cada vez
         # que estra a esta funcion
@@ -395,13 +362,10 @@ class Correlation:
             coso[j] = np.dot(v1,v2)
             tt[j] = skymap.data[idxs[0]]*skymap.data[idxs[1]]
 
-        H = np.histogram2d(coso, tt, [self.breaks, [-10., 1000.]])[0]
-        res = np.sum(H, 1).flatten()
-        return(res)
- 
-
+        H = np.histogram(coso, bins=self.breaks, weights=tt, density=False)[0]
+        return(H)
         #}}}
-     
+ 
     def correlation_II(self, centers, skymap, skymask, nside, Nran, njobs):
         #{{{
         results = []
@@ -413,4 +377,4 @@ class Correlation:
 
         return(results)
         #}}}
-    #}}}
+

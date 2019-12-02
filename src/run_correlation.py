@@ -44,11 +44,17 @@ corr.set_breaks(unit=u.arcmin, start=start, stop=stop, num=nbins+1)
 njobs = int(config['run']['n_jobs']) 
 
 # serial run test
-res = corr.correlation_stack(skymap, skymask, nside, Nran)
+# res = corr.correlation(1, skymap, skymask, nside, Nran)
 
 # multithreading run
-res = corr.correlation_II(range(100), skymap, skymask, nside, Nran, njobs)
+Nexp = 1000
+res = corr.correlation_II(range(Nexp), skymap, skymask, nside, Nran, njobs)
+
+cf = np.sum(res, 0)/Nexp/Nran
+
+import matplotlib.pyplot as plt
+
+plt.plot(corr.breaks.value[:-1], cf)
+plt.show()
 
 
-
-print(res)

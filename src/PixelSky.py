@@ -312,17 +312,20 @@ class Correlation:
         radialprofile: computes the radial profilee
     ''' 
 
-    def __init__(self, breaks=[0], Nran=0):
+    def __init__(self, breaks=[0], skymask=None, nside=256, nran=0, njobs=1):
         #{{{
         import numpy as np
+        import healpy as hp
 
         self.breaks = breaks
-        N = len(breaks)-1
-        self.N = N
-        self.signal = np.zeros(N)
-        self.sigma = np.zeros(N)
-        self.controlsample_mean = np.zeros(N)
-        self.controlsample_sigma = np.zeros(N)
+        self.N = len(breaks)-1
+        self.nside = nside
+        npixs = hp.nside2npix(self.nside)
+        self.masked_indices = [i for i in range(npixs) if skymask.data[i]]
+        self.N_ma_IDs = len(self.masked_indices)
+        self.nran = nran
+        self.njobs = njobs
+
         #}}}
  
     def set_breaks(self, unit, *args, **kwargs):
@@ -335,7 +338,7 @@ class Correlation:
         self.sigma = np.zeros(self.N)
         #}}}
 
-    def correlation(self, k, skymap, skymask, nside, Nran):
+    def correlation(self, k, skymap, skymask):
         #{{{
         # en la version paralela hace un solo centro cada vez
         # que estra a esta funcion
@@ -345,20 +348,18 @@ class Correlation:
         import time
         import random
 
-        Max_Pix_ID = hp.nside2npix(nside)
-
-        # draw a set of Nran pixel pairs
-        x = np.array([random.random() for _ in range(Nran*2)])
-        x = x*Max_Pix_ID
+       # draw a set of nran pixel pairs
+        x = np.array([random.random() for _ in range(self.nran*2)])
+        x = x*self.N_ma_IDs
         x = x.astype(int)
         x = x.reshape((-1, 2))
 
         # compute frequency
-        coso = np.zeros(Nran)
-        tt = np.zeros(Nran)
+        coso = np.zeros(self.nran)
+        tt = np.zeros(self.nran)
         for j, idxs in enumerate(x):
-            v1 = hp.pix2vec(nside, idxs[0])
-            v2 = hp.pix2vec(nside, idxs[1])
+            v1 = hp.pix2vec(self.nside, self.masked_indices[idxs[0]])
+            v2 = hp.pix2vec(self.nside, self.masked_indices[idxs[1]])
             coso[j] = np.dot(v1,v2)
             tt[j] = skymap.data[idxs[0]]*skymap.data[idxs[1]]
 
@@ -366,13 +367,13 @@ class Correlation:
         return(H)
         #}}}
  
-    def correlation_II(self, centers, skymap, skymask, nside, Nran, njobs):
+    def correlation_II(self, centers, skymap, skymask):
         #{{{
         results = []
 
-        results = Parallel(n_jobs=njobs, verbose=5, backend="loky")\
+        results = Parallel(n_jobs=self.njobs, verbose=5, backend="loky")\
             (delayed(unwrap_correlation_self)(i, skymap=skymap,
-                skymask=skymask, nside=nside, Nran=Nran) 
+                skymask=skymask) 
                     for i in zip([self]*len(centers), centers))
 
         return(results)

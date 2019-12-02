@@ -19,6 +19,7 @@ config.read('../set/config_small.ini')
  
 nside = int(config['maps']['filedata_cmb_nside'])
 Nran = int(config['run']['Nran'])
+njobs = int(config['run']['n_jobs']) 
 
 #_________________________________________
 # Read CMB temperature map and mask
@@ -31,30 +32,30 @@ skymap.load(filedata, field=( int(config['maps']['filedata_field_mapa']) ))
 
 filedata = config['maps']['datadir_cmb']+ config['maps']['filedata_cmb_mask']
 skymask.load(filedata, field=( int(config['maps']['filedata_field_mask']) ))
- 
+skymask.data = skymask.data.astype(int)
+
+
 #________________________________
 # Correlation
 
-corr = pxs.Correlation()
+corr = pxs.Correlation(nside=nside, nran=1000, skymask=skymask, njobs=njobs)
 nbins = int(config['run']['corr_n_bins']) 
 start = float(config['run']['corr_start']) 
 stop = float(config['run']['corr_stop']) 
 corr.set_breaks(unit=u.arcmin, start=start, stop=stop, num=nbins+1)
 
-njobs = int(config['run']['n_jobs']) 
-
 # serial run test
 # res = corr.correlation(1, skymap, skymask, nside, Nran)
 
 # multithreading run
-Nexp = 1000
-res = corr.correlation_II(range(Nexp), skymap, skymask, nside, Nran, njobs)
+Nexp = 400
+res = corr.correlation_II(range(Nexp), skymap, skymask)
 
 cf = np.sum(res, 0)/Nexp/Nran
 
 import matplotlib.pyplot as plt
 
-plt.plot(corr.breaks.value[:-1], cf)
+plt.plot(corr.breaks.value[:-1], cf, '.')
 plt.show()
 
 

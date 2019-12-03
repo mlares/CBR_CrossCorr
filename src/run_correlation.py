@@ -1,4 +1,3 @@
-
 # %load_ext autoreload
 # %autoreload 2
 # para que ande el run recargando el modulo desde ipython
@@ -57,5 +56,3 @@ import matplotlib.pyplot as plt
 
 plt.plot(corr.breaks.value[:-1], cf, '.')
 plt.show()
-
-

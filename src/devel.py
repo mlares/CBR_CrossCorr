@@ -279,3 +279,22 @@ class RadialProfile:
 # ...        accumulator += sum(results)  # synchronization barrier
 # ...        n_iter += 1
  
+
+
+
+
+
+
+
+
+
+
+j = 12
+
+b = bin(j)
+
+int(b, 2)
+
+
+
+

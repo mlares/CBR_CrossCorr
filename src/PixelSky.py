@@ -363,7 +363,7 @@ class Correlation:
             coso[j] = np.dot(v1,v2)
             tt[j] = skymap.data[idxs[0]]*skymap.data[idxs[1]]
 
-        H = np.histogram(coso, bins=self.breaks, weights=tt, density=False)[0]
+        H = np.histogram(coso, bins=self.breaks, weights=tt, density=True)[0]
         return(H)
         #}}}
  
@@ -372,10 +372,37 @@ class Correlation:
         results = []
 
         results = Parallel(n_jobs=self.njobs, verbose=5, backend="loky")\
-            (delayed(unwrap_correlation_self)(i, skymap=skymap,
-                skymask=skymask) 
-                    for i in zip([self]*len(centers), centers))
+            (delayed(unwrap_correlation_self)(i, skymap=skymap,skymask=skymask)
+                    for i in zip([self]*len(centers), centers) )
 
         return(results)
         #}}}
 
+class PixelTools:
+    #{{{
+    
+    def spread_pixels(self, Nside_low, Nside_high, ID):
+        #{{{
+        """
+        returns a list of pixel IDs in the Nside_high resolution
+        from a pixel ID in the Nside_low resolution.
+        """
+
+        from math import log
+        Llow = int(log(Nside_low, 2))
+        Lhigh = int(log(Nside_high, 2))
+
+        print(Llow, Lhigh)
+
+        b = bin(ID)
+
+        DN = Lhigh-Llow
+        a = [bin(i)[2:].zfill(2**DN) for i in range(4**DN)]
+        pix_IDs = []
+        for i in a:
+            x = (b[2:].zfill(Llow) + i)
+            pix_IDs.append(int(x, 2))
+        
+        return(pix_IDs)
+        #}}}
+    #}}}

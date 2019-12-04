@@ -393,16 +393,38 @@ class PixelTools:
         Lhigh = int(log(Nside_high, 2))
 
         print(Llow, Lhigh)
-
         b = bin(ID)
-
         DN = Lhigh-Llow
         a = [bin(i)[2:].zfill(2**DN) for i in range(4**DN)]
         pix_IDs = []
         for i in a:
             x = (b[2:].zfill(Llow) + i)
             pix_IDs.append(int(x, 2))
-        
         return(pix_IDs)
         #}}}
+
+    def downgrade_pixels(Nside_low, Nside_high, ID):
+        #{{{
+        """
+        Function to be used for testing purposes
+        It accomplish the same task than spread_pixels, 
+        but with a less efficient, brute force method.
+        """
+        from math import log
+        import healpy as hp
+      
+        Npix_low = hp.nside2npix(Nside_low)
+        Npix_high = hp.nside2npix(Nside_high)
+        l = []
+        a = []
+        for i in range(Npix_high):
+            v = hp.pix2vec(Nside_high, i, nest=True)
+            k = hp.vec2pix(Nside_low, v[0], v[1], v[2], nest=True)
+            if (k==ID):
+                l.append(i)
+                a.append(bin(i))
+        return([l, a])
+        #}}}
+
     #}}}
+

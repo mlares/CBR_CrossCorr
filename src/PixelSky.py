@@ -328,11 +328,10 @@ class Correlation:
 
         #}}}
  
-    def set_breaks(self, unit, *args, **kwargs):
+    def set_breaks(self, *args, **kwargs):
         #{{{
         import numpy as np
         self.breaks = np.linspace(*args, **kwargs)
-        self.breaks = self.breaks * unit
         self.N = len(self.breaks)-1
         self.signal = np.zeros(self.N)
         self.sigma = np.zeros(self.N)
@@ -395,7 +394,7 @@ class PixelTools:
         print(Llow, Lhigh)
         b = bin(ID)
         DN = Lhigh-Llow
-        a = [bin(i)[2:].zfill(2**DN) for i in range(4**DN)]
+        a = [bin(i)[2:].zfill(2*DN) for i in range(4**DN)]
         pix_IDs = []
         for i in a:
             x = (b[2:].zfill(Llow) + i)
@@ -403,7 +402,7 @@ class PixelTools:
         return(pix_IDs)
         #}}}
 
-    def downgrade_pixels(Nside_low, Nside_high, ID):
+    def downgrade_pixels(self, Nside_low, Nside_high, ID):
         #{{{
         """
         Function to be used for testing purposes

@@ -63,5 +63,5 @@ res = corr.correlation_II(range(Nexperiments), skymap, skymask)
 
 import matplotlib.pyplot as plt
 
-plt.plot(corr.breaks.value[:-1], cf, '.')
-plt.show()
+#plt.plot(corr.breaks.value[:-1], cf, '.')
+#plt.show()

@@ -17,7 +17,7 @@
 
 ## tasks requested
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=56
+#SBATCH --cpus-per-task=20
 
 ## STDOUT
 #SBATCH -o submit_python_jobs.out
@@ -34,8 +34,13 @@
 ## No tocar
 . /etc/profile
 
+source /home/${USER}/.bashrc
 conda activate
 
 ## Launch program
 
 srun python /home/mlares/projects/E.26/CBR_CrossCorr/src/run_correlation.py ../set/config_small.ini
+
+
+## launch script
+## $>sbatch submit_python_jobs.sh

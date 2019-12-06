@@ -121,8 +121,8 @@ from joblib import Parallel, delayed
 def unwrap_profile_self(arg, **kwarg):
     return RadialProfile.radialprofile(*arg, **kwarg)
 
-def unwrap_correlation_self(arg, **kwarg):
-    return Correlation.correlation(*arg, **kwarg)
+def unwrap_correlation_self(correlation, c, **kwarg):
+    return correlation.correlation(c, **kwarg)
 
 
 class RadialProfile:
@@ -347,7 +347,8 @@ class Correlation:
         import time
         import random
 
-       # draw a set of nran pixel pairs
+        random.seed((k+42)*3)
+        # draw a set of nran pixel pairs
         x = np.array([random.random() for _ in range(self.nran*2)])
         x = x*self.N_ma_IDs
         x = x.astype(int)
@@ -362,17 +363,21 @@ class Correlation:
             coso[j] = np.dot(v1,v2)
             tt[j] = skymap.data[idxs[0]]*skymap.data[idxs[1]]
 
-        H = np.histogram(coso, bins=self.breaks, weights=tt, density=True)[0]
-        return(H)
+        H = np.histogram(coso, bins=self.breaks, weights=tt, density=False)[0]
+        K = np.histogram(coso, bins=self.breaks, density=False)[0]
+
+        return(H, K)
         #}}}
  
     def correlation_II(self, centers, skymap, skymask):
         #{{{
         results = []
 
-        results = Parallel(n_jobs=self.njobs, verbose=5, backend="loky")\
-            (delayed(unwrap_correlation_self)(i, skymap=skymap,skymask=skymask)
-                    for i in zip([self]*len(centers), centers) )
+        with Parallel(n_jobs=self.njobs, verbose=5, backend="threading") as P:
+            results = P(
+                delayed(unwrap_correlation_self)(self, c, skymap=skymap,skymask=skymask)
+                for c in centers 
+             )
 
         return(results)
         #}}}

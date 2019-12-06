@@ -34,13 +34,16 @@
 ## No tocar
 . /etc/profile
 
-source /home/${USER}/.bashrc
+# conda init bash
+# source /home/${USER}/.bashrc
+
+module load gcc/8.2.0
 conda activate
+# por las dudas activar conda antes de correr el sbatch
 
 ## Launch program
 
-srun python /home/mlares/projects/E.26/CBR_CrossCorr/src/run_correlation.py ../set/config_small.ini
-
+srun python /home/mlares/CBR_CrossCorr/src/run_correlation.py ../set/config_big.ini
 
 ## launch script
 ## $>sbatch submit_python_jobs.sh

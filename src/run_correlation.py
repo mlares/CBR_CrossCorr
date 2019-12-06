@@ -57,11 +57,12 @@ corr.set_breaks(start=start, stop=stop, num=nbins+1)
 # res = corr.correlation(1, skymap, skymask, nside, Nran)
 
 # multithreading run
-res = corr.correlation_II(range(Nexperiments), skymap, skymask)
+result = corr.correlation_II(range(Nexperiments), skymap, skymask)
+
+import pickle
+
+with open( "save.p", "wb" ) as f:
+    pickle.dump(result, f)
+
 
 ## cf = np.sum(res, 0)/Nexperiments/Nran
-
-import matplotlib.pyplot as plt
-
-#plt.plot(corr.breaks.value[:-1], cf, '.')
-#plt.show()

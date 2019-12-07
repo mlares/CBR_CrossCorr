@@ -60,8 +60,16 @@ corr.set_breaks(start=start, stop=stop, num=nbins+1)
 result = corr.correlation_II(range(Nexperiments), skymap, skymask)
 
 import pickle
+ 
+f_root = config['out']['output_dir']
+f_exp =  config['out']['pickle_name_root']
+f_num =  config['out']['pickle_name_exp'] 
+f_idx =  config['out']['pickle_name_idx'] 
+f_ext =  config['out']['pickle_name_ext'] 
 
-with open( "save.p", "wb" ) as f:
+fname = f_root + f_exp + f_num + f_idx + f_ext
+ 
+with open( fname, "wb" ) as f:
     pickle.dump(result, f)
 
 

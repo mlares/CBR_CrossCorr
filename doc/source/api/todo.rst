@@ -27,7 +27,8 @@ Development
   * Check paths and files
   * read a sample of random centers and compute an averaged flat profile
   * compute the profile of just one center (fixed?)
-  * 
+  * checl size of CMB map and Nside
+  * compare results of serial and parallel versions.
 
   Asserts:
 

@@ -132,11 +132,27 @@ class RadialProfile:
     methods for computing angular correlations in the CMB
     methods:
         set_breaks: select bin scheme for the profile
-        radialprofile: computes the radial profilee
+        radialprofile: computes the radial profile
+        radialprofile_II: computes the radial profile in parallel
     ''' 
 
     def __init__(self, breaks=[0], Nran=0):
         #{{{
+        """init(self, breaks, Nran) : sets the partition (binning
+        scheme) for the computing of the radial profile.
+
+        Tasks:
+        1. this works as a combination of np.linspace and units.
+
+        Args:
+            unit:
+            selected unit for the distance to the center
+
+        Raises:
+            errors?
+
+        Returns:
+        """               
         import numpy as np
 
         self.breaks = breaks
@@ -150,6 +166,21 @@ class RadialProfile:
  
     def set_breaks(self, unit, *args, **kwargs):
         #{{{
+        """set_breaks(self, unit) : sets the breaks for the binned 
+        profile.
+
+        Tasks:
+        1. this works as a combination of np.linspace and units.
+
+        Args:
+            unit:
+            selected unit for the distance to the center
+
+        Raises:
+            errors?
+
+        Returns:
+        """                           
 
         import numpy as np
         self.breaks = np.linspace(*args, **kwargs)
@@ -165,7 +196,7 @@ class RadialProfile:
         CMB pixels around selected centers
 
         Tasks:
-        1. traverse all centers (paralalize here)
+        1. traverse all centers
         2. traverse all radial bins
         3. traverse all pixels in the ring
         4. compute the mean
@@ -291,6 +322,35 @@ class RadialProfile:
      
     def radialprofile_II(self, centers, skymap, skymask, njobs):
         #{{{
+        """radialprofile_II(self, skymap) : computes the radial profile of
+        CMB pixels around selected centers in parallel. Uses a wrapper
+        and the joblib library.
+
+        Tasks:
+        1. traverse all centers (paralalize here)
+        2. traverse all radial bins
+        3. traverse all pixels in the ring
+        4. compute the mean
+        5. store the mean values for all the rings
+
+        Args:
+            skymap (class SkyMap):
+            Map of the cosmic background, including scalar and mask
+
+            centers_catalog (class Centers):
+            Catalog of the centers, including (x, y, z) position
+            in Healpix convention and position angle of the galaxy
+            disk.
+
+        Raises:
+            errors?
+
+        Returns:
+            profdata:
+            proferror:
+            uncertaintydata:
+            uncertaintyerror:
+        """                            
         results = []
 
         results = Parallel(n_jobs=njobs, verbose=5, backend="threading")\

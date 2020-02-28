@@ -1,5 +1,7 @@
-proposal
+Proposal
 ===========
 
-La idea es... 
+Science case:
+
+(pensar *donde* escribir esto)
 

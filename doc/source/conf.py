@@ -17,7 +17,9 @@
 import os
 import sys
 sys.path.insert(0, os.path.abspath('../../src3/'))
+sys.path.insert(0, os.path.abspath('../../tst/'))
 
+src_paths = [ '../../src3/', '../../tst/' ]
 
 # -- Project information -----------------------------------------------------
 

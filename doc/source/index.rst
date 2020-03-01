@@ -51,6 +51,8 @@ Getting Started
    api/gettingstarted
    api/usage
    api/pixelsky
+   api/test
+   api/test2
 
 ***********************
 Developer Documentation
@@ -60,6 +62,7 @@ Developer Documentation
    :maxdepth: 2
 
    api/todo
+   api/testing
    api/src_EB
    api/src_HL
    api/src_ML

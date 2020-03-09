@@ -1,13 +1,12 @@
-#import sys
-#sys.path.insert(1, '../src3/')
+
+# procedure for testing:
+# go to root directory and run $ pip install -e .
+# go to tst/ and run pytest
+
 
 import pytest
 import PixelSky as pxs
 import numpy as np
-
-def test_test():
-    assert 'a' in 'Ala'
-
 
 def test_radial_profile_N():
     #{{{
@@ -33,39 +32,73 @@ def test_radial_profile_N():
     assert rp.N == (N-1)
     #}}}
 
-#def test_radial_profile_linspace(self):
-#    #{{{
-#    """
-#    test_radial_profile_linspace(self):
-#        test the construction of the partition for the radial
-#        profile using the linspace function from the numpy
-#        package.
-#
-#    Tasks:
-#
-#    Args:
-#
-#    Raises:
-#        errors?
-#
-#    Returns:
-#    """
-#
-#    rp = pxs.RadialProfile()
-#    N = 10
-#    rp.set_breaks(unit=u.arcmin, start=0., stop=30., num=N, endpoint=True)
-#    self.assertEqual(len(rp.N), N)
-#    #}}}
-#
-#
-#
-#
-#
-#
+def test_radial_profile_linspace():
+    #{{{
+    """
+    test_radial_profile_linspace(self):
+        test the construction of the partition for the radial
+        profile using the linspace function from the numpy
+        package.
+
+    Tasks:
+
+    Args:
+
+    Raises:
+        errors?
+
+    Returns:
+    """
+    import astropy.units as u
+
+    rp = pxs.RadialProfile()
+    N = 10
+    rp.set_breaks(unit=u.arcmin, start=0., stop=30., num=N, endpoint=True)
+    assert rp.N == (N-1)
+    #}}}
+
+def test_load_config_1():
+    #{{{
+    config = pxs.Config(['python','../set/config_small.ini']) 
+    with pytest.raises(SystemExit):
+        config.load_config()
+    #}}}
+
+def test_load_config_2():
+    #{{{
+    config = pxs.Config(['python','../set/non_existent_file.ini']) 
+    with pytest.raises(SystemExit):
+        config.load_config()
+    #}}}
+ 
+def test_load_config_3():
+    #{{{
+    config = pxs.Config([]) 
+    with pytest.raises(SystemExit):
+        config.load_config()
+    #}}}
+ 
+def test_load_config_4():
+    #{{{
+    config = pxs.Config(["hola", "file", "another"]) 
+    with pytest.raises(SystemExit):
+        config.load_config()
+    #}}}
+ 
+def test_load_config_pars():
+    #{{{
+    config = pxs.Config(['','../set/config_small.ini']) 
+    config.load_config()
+
+
+
+    #}}}
+ 
+
+
 #
 #def test_radial_profile_average(self):
 #    #{{{
-#    import PixelSky as pxs
 #    import pandas as pd
 #    import healpy as hp
 #    import numpy as np

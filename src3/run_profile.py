@@ -10,23 +10,38 @@ import numpy as np
 from astropy import units as u
 import time
 
-
-# para parsear los parametros de un experimento se pueden usar
-# diferentes herramientas:
+#_________________________________________
+# Parse parameters from configuration file
+# https://stackoverflow.com/questions/3609852/which-is-the-best-way-to-allow-configuration-options-be-overridden-at-the-comman
 # https://docs.python.org/3/library/configparser.html
 # https://tomassetti.me/parsing-in-python/#tools
 
-#_________________________________________
-# Parse parameters from configuration file
-# todo: override from command line
-# https://stackoverflow.com/questions/3609852/which-is-the-best-way-to-allow-configuration-options-be-overridden-at-the-comman
-
 import configparser
+import sys
+from os.path import isfile
+
 config = configparser.ConfigParser()
-config.read('../set/config_small.ini')
+
+if len(sys.argv) == 2:    
+    filename = sys.argv[1]
+    if isfile(filename):
+        print("Loading configuration parameters from {}".format(filename) )
+    else:
+        print("Input argument is not a file")
+        sys.exit() 
+        
+else:
+    print('Configuration file expected (just 1 argument)')
+    print('example:  python run_correlation.py ../set/config.ini')
+    sys.exit() 
+
+config.read(filename)
+ 
 
 #_________________________________________
 # Read CMB temperature map and mask
+
+print('Reading CMB map and mask...')
 
 nside = int(config['maps']['filedata_cmb_nside'])
 mapa = pxs.SkyMap(nside)
@@ -42,6 +57,7 @@ mask.load(filedata, field=( int(config['maps']['filedata_field_mask']) ))
 #________________________________
 # Galaxy catalog
 
+print('Reading list of centers...')
 # read...
 glx_catalog = config['cats']['datadir_glx']+config['cats']['filedata_glx']
 glx = pd.read_csv(glx_catalog, delim_whitespace=True, header=9)
@@ -64,6 +80,7 @@ centers = np.array(list(glx.vec))
 #________________________________
 # Radial profile
 
+print('Configuring radial profile parameters...')
 rp = pxs.RadialProfile()
 nbins = int(config['run']['rp_n_bins']) 
 start = float(config['run']['rp_start']) 
@@ -71,42 +88,11 @@ stop = float(config['run']['rp_stop'])
 rp.set_breaks(unit=u.arcmin, start=start, stop=stop, num=nbins+1)
 
 
-
 njobs = int(config['run']['n_jobs']) 
 res = rp.radialprofile_II(centers, mapa, mask, njobs)
 rp.signal = np.mean(res, 1)
 rp.sigma = np.std(res, 1)
 
-
-#________________________________
-# run control sample (CS)
-#
-#N = len(glx)
-#x = np.random.random((N,3))
-#
-#v = []
-#for i in x:
-#    v.append(np.dot(i,i))
-#
-#y = []
-#for i in range(N):
-#    y.append(np.division(x[i], v[i]))
-#
-#glx['vec'] = np.array(y)
-
-#def sample_spherical(npoints, ndim=3):
-#    vec = np.random.randn(ndim, npoints)
-#    vec /= np.linalg.norm(vec, axis=0)
-#    return vec
-
-#CS = pxs.RadialProfile()
-#CS.set_breaks(unit=u.arcmin, start=0., stop=30., num=5)
-#
-#res = CS.radialprofile_II(centers, mapa, mask)
-#
-#CS.signal = np.mean(res, 1)
-#CS.sigma = np.std(res, 1)
- 
 
 #________________________________
 # Save results
@@ -120,3 +106,46 @@ if config['out']['save_pickle']:
      
     pickle.dump( rp, open( filedata, "wb" ) )
 
+
+
+
+
+
+
+
+
+ 
+
+
+
+#  #________________________________
+#  # run control sample (CS)
+#  #
+#  #N = len(glx)
+#  #x = np.random.random((N,3))
+#  #
+#  #v = []
+#  #for i in x:
+#  #    v.append(np.dot(i,i))
+#  #
+#  #y = []
+#  #for i in range(N):
+#  #    y.append(np.division(x[i], v[i]))
+#  #
+#  #glx['vec'] = np.array(y)
+#  
+#  #def sample_spherical(npoints, ndim=3):
+#  #    vec = np.random.randn(ndim, npoints)
+#  #    vec /= np.linalg.norm(vec, axis=0)
+#  #    return vec
+#  
+#  #CS = pxs.RadialProfile()
+#  #CS.set_breaks(unit=u.arcmin, start=0., stop=30., num=5)
+#  #
+#  #res = CS.radialprofile_II(centers, mapa, mask)
+#  #
+#  #CS.signal = np.mean(res, 1)
+#  #CS.sigma = np.std(res, 1)
+#   
+#  
+                 

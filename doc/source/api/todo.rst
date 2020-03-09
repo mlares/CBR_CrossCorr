@@ -20,3 +20,20 @@ Development
 
   * What to do is data files are missing
   * Prevent variable overflows and division by zero
+
+  
+  
+TOX
+===
+
+Use `TOX <https://tox.readthedocs.io/en/latest/>`_ to:
+
+
+ * check if package installs correctly with different Python versions and interpreters
+ * run tests in each of the environments
+ * act as a frontend to Continuous Integration servers (TRAVIS)
+  
+
+
+
+

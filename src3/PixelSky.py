@@ -47,41 +47,43 @@ class SkyUnits():
         return(rglxsize)
     #}}}
 
-import configparser
-class Config(configparser.ConfigParser):
-
-    def __init__(self, args):
-        #{{{
-
-        self.args = args
-        #}}} 
- 
-    def load_config(self):
-        # https://stackoverflow.com/questions/3609852/which-is-the-best-way-to-allow-configuration-options-be-overridden-at-the-comman
-        # https://docs.python.org/3/library/configparser.html
-        # https://tomassetti.me/parsing-in-python/#tools
- 
-        import configparser
+def check_file(sys_args):
         import sys
         from os.path import isfile
 
-        if len(self.args) == 2:    
-            filename = self.args[1]
+        if len(sys_args) == 2:    
+            filename = sys_args[1]
             if isfile(filename):
                 msg = "Loading configuration parameters from {}"
                 print(msg.format(filename) )
             else:
-                print("Input argument is not a file")
+                print("Input argument is not a valid file")
                 raise SystemExit(1) 
                 
         else:
             print('Configuration file expected (just 1 argument)')
             print('example:  python run_correlation.py ../set/config.ini')
             raise SystemExit(1) 
-         
-        self.filename = filename
+        
+        return filename
+ 
 
-    #def get_config(self):
+# import configparser
+# #class Config(configparser.ConfigParser):
+# class Config():
+# 
+#     def __init__(self):
+#         #{{{
+#         #ConfigParser.ConfigParser.__init__(self)
+# 
+#         self.cfg = configparser.ConfigParser()
+#         #}}} 
+#  
+#     def load_config(self, sys_args):
+#         # https://stackoverflow.com/questions/3609852/which-is-the-best-way-to-allow-configuration-options-be-overridden-at-the-comman
+#         # https://docs.python.org/3/library/configparser.html
+#         # https://tomassetti.me/parsing-in-python/#tools
+
 
 
 class SkyMap():

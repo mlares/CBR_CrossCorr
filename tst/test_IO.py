@@ -59,38 +59,41 @@ def test_radial_profile_linspace():
 
 def test_load_config_1():
     #{{{
-    config = pxs.Config(['python','../set/config_small.ini']) 
+    sys_args = ['python','../set/config_small.ini']
     with pytest.raises(SystemExit):
-        config.load_config()
-    #}}}
-
-def test_load_config_2():
-    #{{{
-    config = pxs.Config(['python','../set/non_existent_file.ini']) 
-    with pytest.raises(SystemExit):
-        config.load_config()
-    #}}}
- 
-def test_load_config_3():
-    #{{{
-    config = pxs.Config([]) 
-    with pytest.raises(SystemExit):
-        config.load_config()
-    #}}}
- 
-def test_load_config_4():
-    #{{{
-    config = pxs.Config(["hola", "file", "another"]) 
-    with pytest.raises(SystemExit):
-        config.load_config()
-    #}}}
- 
-def test_load_config_pars():
-    #{{{
-    config = pxs.Config(['','../set/config_small.ini']) 
-    config.load_config()
+        pxs.check_file(sys_args)
 
 
+    #config = pxs.check_file(['python','../set/config_small.ini']) 
+    #with pytest.raises(SystemExit):
+    #    config.load_config()
+    #}}}
+
+#def test_load_config_2():
+#    #{{{
+#    config = pxs.check_file(['python','../set/non_existent_file.ini']) 
+#    with pytest.raises(SystemExit):
+#        config.load_config()
+#    #}}}
+# 
+#def test_load_config_3():
+#    #{{{
+#    config = pxs.check_file([]) 
+#    with pytest.raises(SystemExit):
+#        config.load_config()
+#    #}}}
+# 
+#def test_load_config_4():
+#    #{{{
+#    config = pxs.check_file(["hola", "file", "another"]) 
+#    with pytest.raises(SystemExit):
+#        config.load_config()
+#    #}}}
+# 
+#def test_load_config_pars():
+#    #{{{
+#    config = pxs.check_file(['','../set/config_small.ini']) 
+#    config.load_config()
 
     #}}}
  

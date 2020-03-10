@@ -23,7 +23,7 @@ src_paths = [ '../../src3/', '../../tst/' ]
 
 # -- Project information -----------------------------------------------------
 
-project = 'CBR_CC'
+project = 'CMF'
 copyright = '2019, Marcelo Lares, Heliana Luparello'
 author = 'Marcelo Lares, Heliana Luparello'
 

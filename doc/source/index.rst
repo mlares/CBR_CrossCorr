@@ -3,31 +3,20 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-#############################
-CBR_CrossCorr's documentation
-#############################
+################################################
+Cosmic Microwave Foregrounds (CMF) documentation
+################################################
  
-Cross correlations between selected centers and the cosmic background radiation
+ 
+The purpose of this project is to compute the cross correlations between selected centers and the cosmic background radiation.
 
 Project by Heliana Luparello, Diego Garcia Lambas, Ezequiel Boero & Marcelo Lares
+
 
 A python virtual environment is suggested to work with this project.
 Requirements are listed in the project home directory file:
 ``requirements.txt``.
 
-
-
-This documentation has been generated using `Sphinx <https://www.sphinx-doc.org/en/master/usage/quickstart.html>`_.
-
-In order to generate HTML docs locally, go to ``doc/`` and run:
-
-``(python-env) make html``
-
-To generate the documentation on line in readthedocs:
-
-1. log in into readthedocs account
-2. go to project
-3. build
 
 
 
@@ -52,7 +41,6 @@ Getting Started
    api/usage
    api/pixelsky
    api/test
-   api/test2
 
 ***********************
 Developer Documentation
@@ -63,6 +51,7 @@ Developer Documentation
 
    api/todo
    api/testing
+   api/documenting
    api/src_EB
    api/src_HL
    api/src_ML

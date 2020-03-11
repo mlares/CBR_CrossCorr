@@ -60,8 +60,21 @@ def test_radial_profile_linspace():
 def test_load_config_1():
     #{{{
     sys_args = ['python','../set/config_small.ini']
+    filename = pxs.check_file(sys_args)
+    assert isinstance(filename, str)
+
+def test_load_config_2():
+    #{{{
+    sys_args = ['../set/config_small.ini']
     with pytest.raises(SystemExit):
         pxs.check_file(sys_args)
+ 
+def test_load_config_3():
+    #{{{
+    sys_args = ['../set/nonexistentfile.ini']
+    with pytest.raises(SystemExit):
+        pxs.check_file(sys_args)
+
 
 
     #config = pxs.check_file(['python','../set/config_small.ini']) 

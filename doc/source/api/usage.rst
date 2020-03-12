@@ -97,17 +97,18 @@ Configuration files
 
 
 
-Run experiments at IATE
-=======================
+Interactive usage
+=================
 
-For a simple test run, go to src3 and run:
+For a simple test, go to src3 and run:
 
 .. code-block::
 
-   python run_profile.py ../set/config_small.ini
+   $ python run_profile.py ../set/config_small.ini
 
 
-
+Run experiments at IATE
+=======================
 
 In order to use the `HPC services at IATE <https://wiki.oac.uncor.edu/doku.php>`_ the following steps shoul be followed:
 

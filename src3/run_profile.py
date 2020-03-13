@@ -72,7 +72,17 @@ rp.set_breaks(unit=u.arcmin, start=start, stop=stop, num=nbins+1)
 
 
 njobs = int(config['run']['n_jobs']) 
-res = rp.radialprofile_II(centers, mapa, mask, njobs)
+max_centers = int(config['cats']['max_centers']) 
+ncent = min(max_centers, len(centers))
+
+#res = rp.radialprofile_II(centers[:max_centers], mapa, mask, njobs)
+res = rp.radialprofile(centers[:max_centers], mapa, mask, njobs)
+
+"""
+TEST:
+    probar como escala y como trabajan las versiones _II y normal
+"""
+
 rp.signal = np.mean(res, 1)
 rp.sigma = np.std(res, 1)
 

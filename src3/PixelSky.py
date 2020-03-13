@@ -196,6 +196,7 @@ class RadialProfile:
         self.breaks = breaks
         N = len(breaks)-1
         self.N = N
+        self.max_centers = 0
         self.signal = np.zeros(N)
         self.sigma = np.zeros(N)
         self.controlsample_mean = np.zeros(N)
@@ -326,7 +327,8 @@ class RadialProfile:
         """                            
         results = []
 
-        results = Parallel(n_jobs=njobs, verbose=5, backend="threading")\
+        # threading? multiprocessing?
+        results = Parallel(n_jobs=njobs, verbose=5, backend="multiprocessing")\
             (delayed(unwrap_profile_self)(i, skymap=skymap, skymask=skymask) 
                     for i in zip([self]*len(centers), centers))
 

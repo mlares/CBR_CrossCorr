@@ -159,6 +159,9 @@ from joblib import Parallel, delayed
 def unwrap_profile_self(arg, **kwarg):
     return RadialProfile.radialprofile(*arg, **kwarg)
 
+def unwrap_anisotropicprofile_self(arg, **kwarg):
+    return AnisotropicProfile.anisotropic_profile(c, **kwarg)
+
 def unwrap_correlation_self(correlation, c, **kwarg):
     return correlation.correlation(c, **kwarg)
 
@@ -336,6 +339,215 @@ class RadialProfile:
         #}}} 
     #}}}
 
+class AnisotropicProfile:
+    # {{{
+    '''
+    class AnisotropicProfile
+    methods for computing angular correlations in the CMB, as a
+    function of the angle wrt the position angle of the galaxy and the
+    radial distance
+    methods:
+        set_breaks: select bin scheme for the profile
+    ''' 
+
+    def __init__(self, breaks=[0], Nran=0):
+        #{{{
+        """init(self, breaks, Nran) : sets the partition (binning
+        scheme) for the computing of the radial profile.
+
+        Tasks:
+        1. this works as a combination of np.linspace and units.
+
+        Args:
+            unit:
+            selected unit for the distance to the center
+
+        Raises:
+            errors?
+
+        Returns:
+        """               
+        import numpy as np
+
+        self.breaks_rad = breaks
+        self.breaks_ang = breaks
+        self.Nrad = len(self.breaks_rad) - 1
+        self.Nang = len(self.breaks_ang) - 1
+        self.max_centers = 0
+        #}}} 
+ 
+    def set_breaks_radial(self, unit, *args, **kwargs):
+        #{{{
+        """set_breaks(self, unit) : sets the breaks for the binned 
+        profile.
+
+        Tasks:
+        1. this works as a combination of np.linspace and units.
+
+        Args:
+            unit:
+            selected unit for the distance to the center
+
+        Raises:
+            errors?
+
+        Returns:
+        """                           
+
+        import numpy as np
+        self.breaks_rad = np.linspace(*args, **kwargs)
+        self.breaks_rad = self.breaks_rad * unit
+        self.Nrad = len(self.breaks_rad)-1
+        #}}} 
+
+    def set_breaks_angular(self, unit, *args, **kwargs):
+        #{{{
+        """set_breaks(self, unit) : sets the breaks for the binned 
+        profile.
+
+        Tasks:
+        1. this works as a combination of np.linspace and units.
+
+        Args:
+            unit:
+            selected unit for the distance to the center
+
+        Raises:
+            errors?
+
+        Returns:
+        """                           
+
+        import numpy as np
+        self.breaks_ang = np.linspace(*args, **kwargs)
+        self.breaks_ang = self.breaks_ang * unit
+        self.Nang = len(self.breaks_ang)-1
+        #}}} 
+
+    def anisotropic_profile(self, center, skymap, skymask):
+        #{{{
+        """radialprofile(self, skymap) : computes the radial profile of
+        CMB pixels around a selected center
+ 
+       armar la matriz del perfil (bineado en r y o)
+
+       recorrer la lista de centros
+
+          rotar: armar la matriz de rotacion con angulos de Euler
+
+          recorrer lista de pixels
+
+              calcular el angulo entre la direccion del disco y la direccion al pixel
+              calcular la distancia angular entre el centro de la glx y el pixel
+              binear esas dos angulos y guardar                           
+
+
+        """ 
+
+        # en la version paralela hace un solo centro cada vez
+        # que estra a esta funcion
+        import numpy as np
+        import healpy as hp
+        import astropy.units as u
+        import time
+        from scipy.spatial.transform import Rotation as R
+        from math import atan2
+
+        # calcular la matriz de rotacion    
+        phi = float(center.phi)
+        theta = float(center.theta)
+        pa = float(center.pa)
+
+        r = R.from_euler('zxz', [phi, theta, pa], degrees=True)
+ 
+        vector = hp.ang2vec(center.theta, center.phi)[0]
+
+        radius = max(self.breaks_rad).to(u.rad).value
+
+        # querydisc
+        listpixs = hp.query_disc(
+                skymap.nside,
+                vector,
+                radius,
+                inclusive=True,
+                fact=4,
+                nest=False)      
+
+        dists = []
+        thetas = []
+
+        temps = skymap.data[listpixs]
+
+        for ipix in listpixs:
+
+            v = hp.pix2vec(skymap.nside, ipix)
+            w = r.apply(v)
+
+            # la galaxia en el nuevo sistema de coordenadas esta en [0,0,1]
+            dist = hp.rotator.angdist(w, [0,0,1])
+            # el angulo wrt el plano de la galaxia (dado por PA) sale
+            # de la proyeccion en los nuevos ejes X (o sea w[0]) e Y (o sea w[1])
+            theta = atan2(w[1], w[0])
+
+            dists.append(dist[0])
+            thetas.append(theta)
+
+        dists = dists * u.rad
+        thetas = thetas * u.rad
+
+        rr = self.breaks_rad.to(u.rad)
+        aa = self.breaks_ang.to(u.rad)
+        bins2d = [rr, self.breaks_ang]
+
+        H = np.histogram2d(dists, thetas, bins=bins2d, weights=temps, density=False)[0]
+        K = np.histogram2d(dists, thetas, bins=bins2d, density=False)[0]
+ 
+        return([dists, thetas, temps, bins2d])
+        #return([H, K])
+
+        #}}}
+     
+    def anisotropic_profile_II(self, centers, skymap, skymask, njobs):
+        #{{{
+        """radialprofile_II(self, skymap) : computes the radial profile of
+        CMB pixels around selected centers in parallel. Uses a wrapper
+        and the joblib library.
+
+        Tasks:
+        1. traverse all centers (paralalize here)
+        2. traverse all radial bins
+        3. traverse all pixels in the ring
+        4. compute the mean
+        5. store the mean values for all the rings
+
+        Args:
+            skymap (class SkyMap):
+            Map of the cosmic background, including scalar and mask
+
+            centers_catalog (class Centers):
+            Catalog of the centers, including (x, y, z) position
+            in Healpix convention and position angle of the galaxy
+            disk.
+
+        Raises:
+            errors?
+
+        Returns:
+            profdata:
+            proferror:
+            uncertaintydata:
+            uncertaintyerror:
+        """                            
+        results = []
+
+        # threading? multiprocessing?
+        results = Parallel(n_jobs=njobs, verbose=5, backend="multiprocessing")\
+            (delayed(unwrap_anisotropicprofile_self)(i, skymap=skymap, skymask=skymask) 
+                    for i in zip([self]*len(centers), centers))
+
+        return(results)
+        #}}} 
+    #}}}
 
 class Correlation:
     #{{{
@@ -416,6 +628,8 @@ class Correlation:
 
         return(results)
         #}}}
+    #}}}
+
 
 class PixelTools:
     #{{{
@@ -466,4 +680,78 @@ class PixelTools:
         #}}}
 
     #}}}
+
+
+# from random import random
+# N = 1000
+# dists = [random()*0.029 for _ in range(N)]
+# thetas= [random()*3.14 for _ in range(N)]
+# temps = [random() for _ in range(N)]
+# 
+# brad = ap.breaks_rad.to(u.rad).value
+# bang = ap.breaks_ang.value
+# 
+# bins2d = [brad, bang]
+# 
+# H1 = np.histogram2d(dists, thetas, bins=bins2d, weights=temps, density=False)[0]
+# 
+# 
+# 
+# 
+# dists = [random()*0.029 for _ in range(N)]*u.rad
+# thetas= [random()*3.14 for _ in range(N)]*u.rad
+# temps = [random() for _ in range(N)]
+# 
+# brad = ap.breaks_rad.to(u.rad)
+# bang = ap.breaks_ang
+# 
+# bins2d = [brad, bang]
+# 
+# H2 = np.histogram2d(dists, thetas, bins=bins2d, weights=temps, density=False)[0]
+#  
+
+
+
+from astropy import coordinates as coo
+
+phi = float(center.phi)*u.deg
+theta = float(center.theta)*u.deg
+pa = float(center.pa)*u.deg
+
+r = R.from_euler('zxz', [phi.value, theta.value, pa.value], degrees=True)
+
+v = coo.spherical_to_cartesian(1., theta.to(u.rad), phi.to(u.rad))
+
+r.apply(v)
+
+
+
+
+v = [6, 5, 20.]
+v = v / np.dot(v,v)
+
+d, lat, lon = coo.cartesian_to_spherical(v[0], v[1], v[2])
+lat = lat.value + np.pi/2.
+r = R.from_euler('zyz', [lon.value, lat, 0.], degrees=False)
+r.apply(v)
+
+
+
+# esto anda:
+v = [0., 1., 0.]
+d, lat, lon = coo.cartesian_to_spherical(v[0], v[1], v[2])
+lat = lat.value + np.pi/2.
+r = R.from_euler('zyz', [lon.value, lat, 0.], degrees=False)
+r.apply(v)
+
+
+
+
+v = [0., 1., 1.]
+v = v / sqrt(np.dot(v,v))
+d, lat, lon = coo.cartesian_to_spherical(v[0], v[1], v[2])
+lat = lat.value + np.pi/2.
+r = R.from_euler('zyz', [lon.value, lat, 0.], degrees=False)
+r.apply(v)
+         
 

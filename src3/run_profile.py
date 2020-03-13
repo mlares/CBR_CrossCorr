@@ -75,8 +75,10 @@ njobs = int(config['run']['n_jobs'])
 max_centers = int(config['cats']['max_centers']) 
 ncent = min(max_centers, len(centers))
 
-#res = rp.radialprofile_II(centers[:max_centers], mapa, mask, njobs)
-res = rp.radialprofile(centers[:max_centers], mapa, mask, njobs)
+if use_parallel:
+    res = rp.radialprofile_II(centers[:max_centers], mapa, mask, njobs)
+else:
+    res = rp.radialprofile(centers[:max_centers], mapa, mask, njobs)
 
 """
 TEST:

@@ -70,36 +70,38 @@ start = float(config['run']['rp_start'])
 stop = float(config['run']['rp_stop']) 
 rp.set_breaks(unit=u.arcmin, start=start, stop=stop, num=nbins+1)
 
-
 njobs = int(config['run']['n_jobs']) 
 max_centers = int(config['cats']['max_centers']) 
 ncent = min(max_centers, len(centers))
 
+use_parallel = config['run']['use_parallel'].lower() in\
+               ['true', '1', 't', 'y', 'yes', 'yeah', 'yup',\
+                       'certainly', 'uh-huh', 's', 'si', 'sip']
 if use_parallel:
     res = rp.radialprofile_II(centers[:max_centers], mapa, mask, njobs)
 else:
     res = rp.radialprofile(centers[:max_centers], mapa, mask, njobs)
 
-"""
-TEST:
-    probar como escala y como trabajan las versiones _II y normal
-"""
+#"""
+#TEST:
+#    probar como escala y como trabajan las versiones _II y normal
+#"""
+#
+#rp.signal = np.mean(res, 1)
+#rp.sigma = np.std(res, 1)
 
-rp.signal = np.mean(res, 1)
-rp.sigma = np.std(res, 1)
 
-
-#________________________________
-# Save results
-import pickle
-         
-if config['out']['save_pickle']:
-    filedata = config['out']['output_dir']+\
-               config['out']['pickle_name_root']+\
-               config['out']['pickle_name_exp']+\
-               config['out']['pickle_name_idx']+'.p'
-     
-    pickle.dump( rp, open( filedata, "wb" ) )
+##________________________________
+## Save results
+#import pickle
+#         
+#if config['out']['save_pickle']:
+#    filedata = config['out']['output_dir']+\
+#               config['out']['pickle_name_root']+\
+#               config['out']['pickle_name_exp']+\
+#               config['out']['pickle_name_idx']+'.p'
+#     
+#    pickle.dump( rp, open( filedata, "wb" ) )
 
 
 
@@ -141,6 +143,3 @@ if config['out']['save_pickle']:
 #  #
 #  #CS.signal = np.mean(res, 1)
 #  #CS.sigma = np.std(res, 1)
-#   
-#  
-                 

@@ -6,6 +6,7 @@ import pickle
 import sys
 from tqdm import tqdm
 
+DEFAULT_INI = 'set_experiment.ini'
 
 class Parser(ConfigParser):
     """parser class.
@@ -57,7 +58,7 @@ class Parser(ConfigParser):
         mess = ("Configuration file expected:"
                 "\n\t filename or CLI input"
                 "\n\t example:  python run_correlation.py"
-                "\n\t ../set/experiment.ini"
+                f"\n\t {DEFAULT_INI}"
                 "\n\t Using default configuration file")
         if isinstance(sys_args, str):
             if isfile(sys_args):
@@ -67,7 +68,7 @@ class Parser(ConfigParser):
             else:
                 self.message = "Input argument is not a valid file\
                                 Using default configuration file instead"
-                filename = '../set/experiment.ini'
+                filename = DEFAULT_INI
 
         elif isinstance(sys_args, list):
 
@@ -79,14 +80,14 @@ class Parser(ConfigParser):
                     self.message = msg
                 else:
                     self.message = mess
-                    filename = '../set/experiment.ini'
+                    filename = DEFAULT_INI
             else:
                 self.message = mess
-                filename = '../set/experiment.ini'
+                filename = DEFAULT_INI
 
         else:
             self.message = mess
-            filename = '../set/experiment.ini'
+            filename = DEFAULT_INI
 
         self.filename = filename
 
@@ -123,37 +124,51 @@ class Parser(ConfigParser):
             list of filenames
         """
         from collections import namedtuple
+                  
+        experiment_id = self['experiment']['experiment_ID']
+        datadir_cmb = self['cmb']['datadir_cmb']
+        filedata_cmb_mapa = self['cmb']['filedata_cmb_mapa']
+        filedata_cmb_mask = self['cmb']['filedata_cmb_mask']
+        datadir_glx = self['cat']['datadir_glx']
+        filedata_glx = self['cat']['filedata_glx']
+        pickle_name_root = self['out']['pickle_name_root']
+        pickle_name_ext = self['out']['pickle_name_ext']
+        dir_plots = self['out']['dir_plots']
+        plot_name_root = self['out']['plot_name_root']
+        plot_format = self['out']['plot_format']
+        plot_ftype = self['out']['plot_ftype']
+        plot_fname = plot_name_root + experiment_id + '.' + plot_format
 
-        # Experiment settings
-        exp_id = self['experiment']['exp_id']
-        dir_plots = self['output']['dir_plots']
-        pars_root = self['output']['pars_root']
-        progress_root = self['output']['progress_root']
-        dir_output = self['output']['dir_output']
-        plot_fname = self['output']['plot_fname']
-        plot_ftype = self['output']['plot_ftype']
 
-        fname = dir_plots + plot_fname + '_' + exp_id + plot_ftype
+        fname = dir_plots + plot_fname + '_' + experiment_id + plot_ftype
 
-        names = 'exp_id \
+        names = 'experiment_id \
+                 datadir_cmb \
+                 filedata_cmb_mapa \
+                 filedata_cmb_mask \
+                 datadir_glx \
+                 filedata_glx \
+                 pickle_name_root \
+                 pickle_name_ext \
                  dir_plots \
-                 dir_output \
-                 pars_root \
-                 progress_root \
-                 plot_fname \
+                 plot_name_root \
                  plot_ftype \
-                 fname'
+                 plot_format'
 
         parset = namedtuple('pars', names)
 
-        res = parset(exp_id,
+        res = parset(experiment_id,
+                     datadir_cmb,
+                     filedata_cmb_mapa,
+                     filedata_cmb_mask,
+                     datadir_glx,
+                     filedata_glx,
+                     pickle_name_root,
+                     pickle_name_ext,
                      dir_plots,
-                     dir_output,
-                     pars_root,
-                     progress_root,
-                     plot_fname,
+                     plot_name_root,
                      plot_ftype,
-                     fname)
+                     plot_format)
 
         self.filenames = res
 
@@ -184,6 +199,42 @@ class Parser(ConfigParser):
                         if has:
                             self[sec][k] = v
 
+        experiment_id = self['experiment']['experiment_id']
+
+        n_jobs = self['run']['n_jobs']
+        r_start = self['run']['r_start']
+        r_stop = self['run']['r_stop']
+        r_n_bins = self['run']['r_n_bins']
+        r_units = self['run']['r_units']
+        theta_start = self['run']['theta_start']
+        theta_stop = self['run']['theta_stop']
+        theta_n_bins = self['run']['theta_n_bins']
+        theta_units = self['run']['theta_units']
+        scale_to = self['run']['scale_to']
+        norm_to = self['run']['norm_to']
+        adaptative_resolution = self['run']['adaptative_resolution']
+        dir_output = self['out']['dir_output']
+        dir_plots = self['out']['dir_plots']
+
+        choice = self['run']['disk_align']
+        if choice.lower() in 'yesitrue':
+            disk_align = True
+        elif choice.lower() in 'nofalse':
+            disk_align = False
+        else:
+            print('warning in .ini file: UX: verbose')
+            disk_align = False
+ 
+        choice = self['run']['adaptative_resolution']
+        if choice.lower() in 'yesitrue':
+            adaptative_resolution = True
+        elif choice.lower() in 'nofalse':
+            adaptative_resolution = False
+        else:
+            print('warning in .ini file: UX: verbose')
+            adaptative_resolution = False
+
+
         choice = self['UX']['verbose']
         if choice.lower() in 'yesitrue':
             verbose = True
@@ -197,44 +248,14 @@ class Parser(ConfigParser):
             print('loading parameters...')
         from collections import namedtuple
 
-        ghz_inner = float(self['simu']['ghz_inner'])
-        ghz_outer = float(self['simu']['ghz_outer'])
-
-        t_max = float(self['simu']['t_max'])
-
-        tau_a_min = float(self['simu']['tau_a_min'])
-        tau_a_max = float(self['simu']['tau_a_max'])
-        tau_a_nbins = int(self['simu']['tau_a_nbins'])
-
-        tau_s_min = float(self['simu']['tau_s_min'])
-        tau_s_max = float(self['simu']['tau_s_max'])
-        tau_s_nbins = int(self['simu']['tau_s_nbins'])
-
-        d_max_min = float(self['simu']['d_max_min'])
-        d_max_max = float(self['simu']['d_max_max'])
-        d_max_nbins = int(self['simu']['d_max_nbins'])
-
-        if nran is None:
-            nran = int(self['simu']['nran'])
-
-        choices = self['simu']['run_parallel']
+        choices = self['run']['run_parallel']
         if choices.lower() in 'yesitrue':
             run_parallel = True
         elif choices.lower() in 'nofalse':
             run_parallel = False
         else:
             run_parallel = False
-
-        # Experiment settings
-        exp_id = self['experiment']['exp_id']
-        njobs = int(self['simu']['njobs'])
-        dir_plots = self['output']['dir_plots']
-        dir_output = self['output']['dir_output']
-        pars_root = self['output']['pars_root']
-        plot_fname = self['output']['plot_fname']
-        plot_ftype = self['output']['plot_ftype']
-        fname = dir_plots + plot_fname + '_' + exp_id + plot_ftype
-
+ 
         choice = self['UX']['show_progress']
         if choice.lower() in 'yesitrue':
             showp = True
@@ -243,70 +264,61 @@ class Parser(ConfigParser):
         else:
             print('warning in .ini file: UX: show_progress')
             showp = False
-
-        string_overwrite = self['output']['clobber']
+ 
+        string_overwrite = self['out']['clobber']
         if string_overwrite.lower() in 'yesitrue':
             overwrite = True
         elif string_overwrite.lower() in 'nofalse':
             overwrite = False
         else:
             print('warning in .ini file: output: clobber')
-            overwrite = False
+            overwrite = False 
 
-        names = ['ghz_inner',
-                 'ghz_outer',
-                 't_max',
-                 'tau_a_min',
-                 'tau_a_max',
-                 'tau_a_nbins',
-                 'tau_s_min',
-                 'tau_s_max',
-                 'tau_s_nbins',
-                 'd_max_min',
-                 'd_max_max',
-                 'd_max_nbins',
-                 'nran',
+        names = ['experiment_id',
+                 'n_jobs',
+                 'r_start',
+                 'r_stop',
+                 'r_n_bins',
+                 'r_units',
+                 'theta_start',
+                 'theta_stop',
+                 'theta_n_bins',
+                 'theta_units',
+                 'scale_to',
+                 'norm_to',
+                 'adaptative_resolution',
+                 'disk_align',
+                 'verbose',
                  'run_parallel',
-                 'njobs',
-                 'exp_id',
-                 'dir_plots',
-                 'dir_output',
-                 'pars_root',
-                 'plot_fname',
-                 'plot_ftype',
-                 'fname',
                  'showp',
                  'overwrite',
-                 'verbose']
+                 'dir_output',
+                 'dir_plots']
+
         names = ' '.join(names)
 
         parset = namedtuple('pars', names)
 
-        res = parset(ghz_inner,
-                     ghz_outer,
-                     t_max,
-                     tau_a_min,
-                     tau_a_max,
-                     tau_a_nbins,
-                     tau_s_min,
-                     tau_s_max,
-                     tau_s_nbins,
-                     d_max_min,
-                     d_max_max,
-                     d_max_nbins,
-                     nran,
+        res = parset(experiment_id,
+                     n_jobs,
+                     r_start,
+                     r_stop,
+                     r_n_bins,
+                     r_units,
+                     theta_start,
+                     theta_stop,
+                     theta_n_bins,
+                     theta_units,
+                     scale_to,
+                     norm_to,
+                     adaptative_resolution,
+                     disk_align,
+                     verbose,
                      run_parallel,
-                     njobs,
-                     exp_id,
-                     dir_plots,
-                     dir_output,
-                     pars_root,
-                     plot_fname,
-                     plot_ftype,
-                     fname,
                      showp,
                      overwrite,
-                     verbose)
+                     dir_output,
+                     dir_plots)
 
         self.p = res
 
@@ -344,7 +356,7 @@ class Parser(ConfigParser):
                 pass
 
         # experiment directory
-        ID_dir = self.p.dir_output + self.p.exp_id
+        ID_dir = self.p.dir_output + self.p.experiment_id
         if not path.isdir(ID_dir):
             print(f"Directory {ID_dir} does not exist")
 

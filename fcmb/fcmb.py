@@ -1,6 +1,6 @@
-from fcmb import Parser
-from fcmb import PixelSky
-from fcmb import SkyUnits
+from Parser import Parser
+from PixelSky import SkyMap, PixelTools
+from SkyUnits import SkyUnits
 
 
 from joblib import Parallel, delayed
@@ -480,19 +480,8 @@ class Correlation:
     #}}}
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+#########  LA IDEA ES HACER UNA FUNCION CORR QUE REEMPLACE A LAS 3
+#########  FUNCIONES: RADIALPROFILE, ANISOTROPICPROFILE Y CORRELATION
 
 
     def corr(self, centers, tracers, 
@@ -521,43 +510,43 @@ class Correlation:
         from scipy.spatial.transform import Rotation as R
         from math import atan2
 
-        if autocorr: (montecarlo)
-            listpixs_C = 
-            listpixs_T = 
-            pix2vec
-            pix2vec
-            vec_C =
-            vec_T = 
+        #if autocorr: (montecarlo)
+        #    listpixs_C = 
+        #    listpixs_T = 
+        #    pix2vec
+        #    pix2vec
+        #    vec_C =
+        #    vec_T = 
 
-        if profile: (querydisc)
-            listpixs_C = 
-            listpixs_T = 
-            pix2vec
-            pix2vec
-            vec_C =
-            vec_T = 
-            #rotation
+        #if profile: (querydisc)
+        #    listpixs_C = 
+        #    listpixs_T = 
+        #    pix2vec
+        #    pix2vec
+        #    vec_C =
+        #    vec_T = 
+        #    #rotation
 
-        # pasar pixs a vecs
+        ## pasar pixs a vecs
 
-        for i in vec_C:
-            for i in vec_T:
-                dist =
-                theta =
-                dists.append(dist)
-                thetas.append(theta)
-                       
-        dists = dists * u.rad
-        thetas = thetas * u.rad
+        #for i in vec_C:
+        #    for i in vec_T:
+        #        dist =
+        #        theta =
+        #        dists.append(dist)
+        #        thetas.append(theta)
+        #               
+        #dists = dists * u.rad
+        #thetas = thetas * u.rad
 
-        rr = self.breaks_rad.to(u.rad)
-        aa = self.breaks_ang.to(u.rad)
-        bins2d = [rr, self.breaks_ang]
+        #rr = self.breaks_rad.to(u.rad)
+        #aa = self.breaks_ang.to(u.rad)
+        #bins2d = [rr, self.breaks_ang]
 
-        H = np.histogram2d(dists, thetas, bins=bins2d,
-                           weights=temps, density=False)[0]
-        K = np.histogram2d(dists, thetas, bins=bins2d,
-                           density=False)[0]
+        #H = np.histogram2d(dists, thetas, bins=bins2d,
+        #                   weights=temps, density=False)[0]
+        #K = np.histogram2d(dists, thetas, bins=bins2d,
+        #                   density=False)[0]
                        
 
 

@@ -1,314 +1,124 @@
 from Parser import Parser
 from PixelSky import SkyMap, PixelTools
 from SkyUnits import SkyUnits
+import pandas as pd
+import healpy as hp
+import numpy as np
+import astropy.units as u
+import time
+from scipy.spatial.transform import Rotation as R
+from math import atan2
 
 
-from joblib import Parallel, delayed
+def unwrap_run(correlation, c, **kwarg):
+    """Wrap the serial function for parallel run.
 
-def unwrap_profile_self(arg, **kwarg):
-    return RadialProfile.radialprofile(*arg, **kwarg)
-
-def unwrap_anisotropicprofile_self(arg, **kwarg):
-    return AnisotropicProfile.anisotropic_profile(c, **kwarg)
-
-def unwrap_correlation_self(correlation, c, **kwarg):
-    return correlation.correlation(c, **kwarg)
+    This function just call the serialized version, but allows to run
+    it concurrently.
+    """
+    return correlation.run(c, **kwarg)
 
 
-class RadialProfile:
-    # {{{
+class Correlation:
+    #{{{
     '''
-    class RadialProfile
+    class Correlation
     methods for computing angular correlations in the CMB
     methods:
         set_breaks: select bin scheme for the profile
-        radialprofile: computes the radial profile
-        radialprofile_II: computes the radial profile in parallel
+        radialprofile: computes the radial profilee
     ''' 
 
-    def __init__(self, breaks=[0], Nran=0):
+    # def __init__(self, breaks=[0], skymask=None, nside=256, nran=0, njobs=1):
+    def __init__(self, config):
         #{{{
-        """init(self, breaks, Nran) : sets the partition (binning
-        scheme) for the computing of the radial profile.
-
-        Tasks:
-        1. this works as a combination of np.linspace and units.
-
-        Args:
-            unit:
-            selected unit for the distance to the center
-
-        Raises:
-            errors?
-
-        Returns:
-        """               
-        import numpy as np
-
-        self.breaks = breaks
-        N = len(breaks)-1
-        self.N = N
-        self.max_centers = 0
-        self.signal = np.zeros(N)
-        self.sigma = np.zeros(N)
-        self.controlsample_mean = np.zeros(N)
-        self.controlsample_sigma = np.zeros(N)
-        #}}} 
- 
-    def set_breaks(self, unit, *args, **kwargs):
-        #{{{
-        """set_breaks(self, unit) : sets the breaks for the binned 
-        profile.
-
-        Tasks:
-        1. this works as a combination of np.linspace and units.
-
-        Args:
-            unit:
-            selected unit for the distance to the center
-
-        Raises:
-            errors?
-
-        Returns:
-        """                           
-
-        import numpy as np
-        self.breaks = np.linspace(*args, **kwargs)
-        self.breaks = self.breaks * unit
-        self.N = len(self.breaks)-1
-        self.signal = np.zeros(self.N)
-        self.sigma = np.zeros(self.N)
-        #}}} 
-
-    def radialprofile(self, center, skymap, skymask):
-        #{{{
-        """radialprofile(self, skymap) : computes the radial profile of
-        CMB pixels around a selected center
-
-        Tasks:
-        1. traverse all centers (paralalize here)
-        2. traverse all radial bins
-        3. traverse all pixels in the ring
-        4. compute the mean
-        5. store the mean values for all the rings
-
-        Args:
-            skymap (class SkyMap):
-            Map of the cosmic background, including scalar and mask
-
-            centers_catalog (class Centers):
-            Catalog of the centers, including (x, y, z) position
-            in Healpix convention and position angle of the galaxy
-            disk.
-
-        Raises:
-            errors?
-
-        Returns:
-            profdata:
-            proferror:
-            uncertaintydata:
-            uncertaintyerror:
-        """ 
-
-        # en la version paralela hace un solo centro cada vez
-        # que estra a esta funcion
         import numpy as np
         import healpy as hp
-        import astropy.units as u
-        import time
 
-        radiifloat = self.breaks.to(u.rad)
-        listpixs_internal = []
-        listpixs_mask = []
-        profile = []
-        first = True
-
-        for radiusfloat in radiifloat:
-            listpixs_external = hp.query_disc(
-                skymap.nside,
-                center,
-                radiusfloat.value,
-                inclusive=True,
-                fact=4,
-                nest=False)
-
-            if(not first):
-                listpixs_ring = list(set(listpixs_external) -
-                                    set(listpixs_internal))
-                listpixs_mask = skymask.data[listpixs_ring]
-                mean_ring = np.nanmean(skymap.data[listpixs_ring])
-                profile.append(mean_ring)
-            first = False
-            listpixs_internal = listpixs_external.copy()
-
-        return(profile)
+        #self.breaks = breaks
+        #self.N = len(breaks)-1
+        #self.nside = nside
+        #npixs = hp.nside2npix(self.nside)
+        #self.masked_indices = [i for i in range(npixs) if skymask.data[i]]
+        #self.N_ma_IDs = len(self.masked_indices)
+        #self.nran = nran
+        #self.njobs = njobs
+        self.config = config
         #}}}
-     
-    def radialprofile_II(self, centers, skymap, skymask, njobs):
-        #{{{
-        """radialprofile_II(self, skymap) : computes the radial profile of
-        CMB pixels around selected centers in parallel. Uses a wrapper
-        and the joblib library.
-
-        Tasks:
-        1. traverse all centers (paralalize here)
-        2. traverse all radial bins
-        3. traverse all pixels in the ring
-        4. compute the mean
-        5. store the mean values for all the rings
-
-        Args:
-            skymap (class SkyMap):
-            Map of the cosmic background, including scalar and mask
-
-            centers_catalog (class Centers):
-            Catalog of the centers, including (x, y, z) position
-            in Healpix convention and position angle of the galaxy
-            disk.
-
-        Raises:
-            errors?
-
-        Returns:
-            profdata:
-            proferror:
-            uncertaintydata:
-            uncertaintyerror:
-        """                            
-        results = []
-
-        # threading? multiprocessing?
-        results = Parallel(n_jobs=njobs, verbose=5, backend="multiprocessing")\
-            (delayed(unwrap_profile_self)(i, skymap=skymap, skymask=skymask) 
-                    for i in zip([self]*len(centers), centers))
-
-        return(results)
-        #}}} 
-    #}}}
-
-class AnisotropicProfile:
-    # {{{
-    '''
-    class AnisotropicProfile
-    methods for computing angular correlations in the CMB, as a
-    function of the angle wrt the position angle of the galaxy and the
-    radial distance
-    methods:
-        set_breaks: select bin scheme for the profile
-    ''' 
-
-    def __init__(self, breaks=[0], Nran=0):
-        #{{{
-        """init(self, breaks, Nran) : sets the partition (binning
-        scheme) for the computing of the radial profile.
-
-        Tasks:
-        1. this works as a combination of np.linspace and units.
-
-        Args:
-            unit:
-            selected unit for the distance to the center
-
-        Raises:
-            errors?
-
-        Returns:
-        """               
-        import numpy as np
-
-        self.breaks_rad = breaks
-        self.breaks_ang = breaks
-        self.Nrad = len(self.breaks_rad) - 1
-        self.Nang = len(self.breaks_ang) - 1
-        self.max_centers = 0
-        #}}} 
  
-    def set_breaks_radial(self, unit, *args, **kwargs):
-        #{{{
-        """set_breaks(self, unit) : sets the breaks for the binned 
-        profile.
 
-        Tasks:
-        1. this works as a combination of np.linspace and units.
+    def load_centers(self):
 
-        Args:
-            unit:
-            selected unit for the distance to the center
+        conf = self.config.filenames
+        # read Galaxy catalog
+        glx_catalog = conf.datadir_glx + conf.filedata_glx
+        glx = pd.read_csv(glx_catalog, delim_whitespace=True, header=9)
 
-        Raises:
-            errors?
+        phi_healpix = glx['RAdeg']*np.pi/180.
+        theta_healpix = (90. - glx['DECdeg'])*np.pi/180.
+        glx['vec'] = hp.ang2vec(theta_healpix, phi_healpix).tolist()
 
-        Returns:
-        """                           
-
-        import numpy as np
-        self.breaks_rad = np.linspace(*args, **kwargs)
-        self.breaks_rad = self.breaks_rad * unit
-        self.Nrad = len(self.breaks_rad)-1
-        #}}} 
-
-    def set_breaks_angular(self, unit, *args, **kwargs):
-        #{{{
-        """set_breaks(self, unit) : sets the breaks for the binned 
-        profile.
-
-        Tasks:
-        1. this works as a combination of np.linspace and units.
-
-        Args:
-            unit:
-            selected unit for the distance to the center
-
-        Raises:
-            errors?
-
-        Returns:
-        """                           
-
-        import numpy as np
-        self.breaks_ang = np.linspace(*args, **kwargs)
-        self.breaks_ang = self.breaks_ang * unit
-        self.Nang = len(self.breaks_ang)-1
-        #}}} 
-
-    def anisotropic_profile(self, center, skymap, skymask):
-        #{{{
-        """radialprofile(self, skymap) : computes the radial profile of
-        CMB pixels around a selected center
- 
-       armar la matriz del perfil (bineado en r y o)
-
-       recorrer la lista de centros
-
-          rotar: armar la matriz de rotacion con angulos de Euler
-
-          recorrer lista de pixels
-
-              calcular el angulo entre la direccion del disco y la direccion al pixel
-              calcular la distancia angular entre el centro de la glx y el pixel
-              binear esas dos angulos y guardar                           
+        self.centers = 0
 
 
-        """ 
+    def load_tracers(self):
 
-        # en la version paralela hace un solo centro cada vez
-        # que estra a esta funcion
-        import numpy as np
-        import healpy as hp
-        import astropy.units as u
-        import time
-        from scipy.spatial.transform import Rotation as R
-        from math import atan2
+        conf = self.config.filenames
+        print(conf.datadir_cmb + conf.filedata_cmb_mapa)
+        nside = int(self.config['cmb']['filedata_cmb_nside'])
+        mapa = SkyMap(nside)
+        mask = SkyMap(nside)
 
-        # calcular la matriz de rotacion    
+        filedata = conf.datadir_cmb + conf.filedata_cmb_mapa 
+        mapa.load(filedata, field=( int(self.config['cmb']['filedata_field_mapa']) ))
+        filedata = conf.datadir_cmb + conf.filedata_cmb_mask
+        mask.load(filedata, field=( int(self.config['cmb']['filedata_field_mask']) ))
+
+        # averiguar si esto duplica la memoria
+        self.map = mapa
+        self.mask = mask
+
+
+#########  LA IDEA ES HACER UNA FUNCION CORR QUE REEMPLACE A LAS 3
+#########  FUNCIONES: RADIALPROFILE, ANISOTROPICPROFILE Y CORRELATION
+
+    def corr_II():
+        """Run an experiment, parallel version.
+
+        Paralelization is made on the basis of centers
+
+        Parameters
+        ----------
+        params: the parameters
+        njobs: number of jobs
+        """
+        from joblib import Parallel, delayed
+
+        Pll = Parallel(n_jobs=njobs, verbose=5, prefer="processes")
+
+
+        params = self.params.values.tolist()
+        ids = np.array(range(len(params))) + 1
+        ntr = [interactive]*len(params)
+
+        z = zip([self]*len(params), params, ids, ntr)
+
+        d_experiment = delayed(unwrap_run)
+
+        results = Pll(d_experiment(i) for i in z)                 
+
+        # ojo a esto hay que procesarlo para que sea una correlacion
+        return results
+
+    def run(self, centers, tracers, 
+             parallel=False, njobs=1):
+
+       # calcular la matriz de rotacion    
         phi = float(center.phi)
         theta = float(center.theta)
         pa = float(center.pa)
 
         r = R.from_euler('zxz', [phi, theta, pa], degrees=True)
- 
         vector = hp.ang2vec(center.theta, center.phi)[0]
 
         radius = max(self.breaks_rad).to(u.rad).value
@@ -354,139 +164,13 @@ class AnisotropicProfile:
         return([dists, thetas, temps, bins2d])
         #return([H, K])
 
-        #}}}
-     
-    def anisotropic_profile_II(self, centers, skymap, skymask, njobs):
-        #{{{
-        """radialprofile_II(self, skymap) : computes the radial profile of
-        CMB pixels around selected centers in parallel. Uses a wrapper
-        and the joblib library.
 
-        Tasks:
-        1. traverse all centers (paralalize here)
-        2. traverse all radial bins
-        3. traverse all pixels in the ring
-        4. compute the mean
-        5. store the mean values for all the rings
-
-        Args:
-            skymap (class SkyMap):
-            Map of the cosmic background, including scalar and mask
-
-            centers_catalog (class Centers):
-            Catalog of the centers, including (x, y, z) position
-            in Healpix convention and position angle of the galaxy
-            disk.
-
-        Raises:
-            errors?
-
-        Returns:
-            profdata:
-            proferror:
-            uncertaintydata:
-            uncertaintyerror:
-        """                            
-        results = []
-
-        # threading? multiprocessing?
-        results = Parallel(n_jobs=njobs, verbose=5, backend="multiprocessing")\
-            (delayed(unwrap_anisotropicprofile_self)(i, skymap=skymap, skymask=skymask) 
-                    for i in zip([self]*len(centers), centers))
-
-        return(results)
-        #}}} 
-    #}}}
-
-class Correlation:
-    #{{{
-    '''
-    class Correlation
-    methods for computing angular correlations in the CMB
-    methods:
-        set_breaks: select bin scheme for the profile
-        radialprofile: computes the radial profilee
-    ''' 
-
-    def __init__(self, breaks=[0], skymask=None, nside=256, nran=0, njobs=1):
-        #{{{
-        import numpy as np
-        import healpy as hp
-
-        self.breaks = breaks
-        self.N = len(breaks)-1
-        self.nside = nside
-        npixs = hp.nside2npix(self.nside)
-        self.masked_indices = [i for i in range(npixs) if skymask.data[i]]
-        self.N_ma_IDs = len(self.masked_indices)
-        self.nran = nran
-        self.njobs = njobs
-
-        #}}}
- 
-    def set_breaks(self, *args, **kwargs):
-        #{{{
-        import numpy as np
-        self.breaks = np.linspace(*args, **kwargs)
-        self.N = len(self.breaks)-1
-        self.signal = np.zeros(self.N)
-        self.sigma = np.zeros(self.N)
-        #}}}
-
-    def correlation(self, k, skymap, skymask):
-        #{{{
-        # en la version paralela hace un solo centro cada vez
-        # que estra a esta funcion
-        import numpy as np
-        import healpy as hp
-        import astropy.units as u
-        import time
-        import random
-
-        random.seed((k+42)*3)
-        # draw a set of nran pixel pairs
-        x = np.array([random.random() for _ in range(self.nran*2)])
-        x = x*self.N_ma_IDs
-        x = x.astype(int)
-        x = x.reshape((-1, 2))
-
-        # compute frequency
-        coso = np.zeros(self.nran)
-        tt = np.zeros(self.nran)
-        for j, idxs in enumerate(x):
-            v1 = hp.pix2vec(self.nside, self.masked_indices[idxs[0]])
-            v2 = hp.pix2vec(self.nside, self.masked_indices[idxs[1]])
-            coso[j] = np.dot(v1,v2)
-            tt[j] = skymap.data[idxs[0]]*skymap.data[idxs[1]]
-
-        H = np.histogram(coso, bins=self.breaks, weights=tt, density=False)[0]
-        K = np.histogram(coso, bins=self.breaks, density=False)[0]
-
-        return(H, K)
-        #}}}
- 
-    def correlation_II(self, centers, skymap, skymask):
-        #{{{
-        results = []
-
-        with Parallel(n_jobs=self.njobs, verbose=5, backend="threading") as P:
-            results = P(
-                delayed(unwrap_correlation_self)(self, c, skymap=skymap,skymask=skymask)
-                for c in centers 
-             )
-
-        return(results)
-        #}}}
-    #}}}
-
-
-#########  LA IDEA ES HACER UNA FUNCION CORR QUE REEMPLACE A LAS 3
-#########  FUNCIONES: RADIALPROFILE, ANISOTROPICPROFILE Y CORRELATION
-
-
-    def corr(self, centers, tracers, 
+    def run_initial_(self, centers, tracers, 
              parallel=False, njobs=1):
         """Compute correlations in CMB data.
+
+        When centers are fixed, it returns the stacked radial profile.
+
 
         Parameters
         ----------
@@ -501,8 +185,13 @@ class Correlation:
             Cross product of temperatures
         K : array like
             Counts of pairs contributing to each bin
+        profile : array like
+            Array containing the mean temperature per radial bin.
+            Angular bins are also returned if required from
+            configuration.  The scale of the radial coordinate depends
+            on the configuration. All configuration parameters are
+            stored in self.config
         """
-        #{{{
         import numpy as np
         import healpy as hp
         import astropy.units as u
@@ -550,16 +239,6 @@ class Correlation:
                        
 
 
-
-
-
-
-
-
-
-
-
-
         # calcular la matriz de rotacion    
         phi = float(center.phi)
         theta = float(center.theta)
@@ -611,5 +290,9 @@ class Correlation:
         return([dists, thetas, temps, bins2d])
         #return([H, K])
 
-        #}}}
+
+
+
  
+
+

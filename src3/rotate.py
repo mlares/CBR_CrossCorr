@@ -296,48 +296,6 @@ class RadialProfile:
 
         return(profile)
         #}}}
-
-    def radialprofile_align(self, center, skymap, skymask):
-        #{{{
-        """radialprofile(self, skymap) : computes the radial profile of
-
-        ACA INCORPORAR LO DE LA ROTACION
-
-        """ 
-
-        # en la version paralela hace un solo centro cada vez
-        # que estra a esta funcion
-        import numpy as np
-        import healpy as hp
-        import astropy.units as u
-        import time
-
-        radiifloat = self.breaks.to(u.rad)
-        listpixs_internal = []
-        listpixs_mask = []
-        profile = []
-        first = True
-
-        for radiusfloat in radiifloat:
-            listpixs_external = hp.query_disc(
-                skymap.nside,
-                center,
-                radiusfloat.value,
-                inclusive=True,
-                fact=4,
-                nest=False)
-
-            if(not first):
-                listpixs_ring = list(set(listpixs_external) -
-                                    set(listpixs_internal))
-                listpixs_mask = skymask.data[listpixs_ring]
-                mean_ring = np.nanmean(skymap.data[listpixs_ring])
-                profile.append(mean_ring)
-            first = False
-            listpixs_internal = listpixs_external.copy()
-
-        return(profile)
-        #}}}
      
     def radialprofile_II(self, centers, skymap, skymask, njobs):
         #{{{
@@ -673,7 +631,7 @@ class Correlation:
     #}}}
 
 
-class PixelTools:                      ancing strip porn
+class PixelTools:
     #{{{
     
     def spread_pixels(self, Nside_low, Nside_high, ID):
@@ -724,31 +682,120 @@ class PixelTools:                      ancing strip porn
     #}}}
 
 
-def rotar():
+# from random import random
+# N = 1000
+# dists = [random()*0.029 for _ in range(N)]
+# thetas= [random()*3.14 for _ in range(N)]
+# temps = [random() for _ in range(N)]
+# 
+# brad = ap.breaks_rad.to(u.rad).value
+# bang = ap.breaks_ang.value
+# 
+# bins2d = [brad, bang]
+# 
+# H1 = np.histogram2d(dists, thetas, bins=bins2d, weights=temps, density=False)[0]
+# 
+# 
+# 
+# 
+# dists = [random()*0.029 for _ in range(N)]*u.rad
+# thetas= [random()*3.14 for _ in range(N)]*u.rad
+# temps = [random() for _ in range(N)]
+# 
+# brad = ap.breaks_rad.to(u.rad)
+# bang = ap.breaks_ang
+# 
+# bins2d = [brad, bang]
+# 
+# H2 = np.histogram2d(dists, thetas, bins=bins2d, weights=temps, density=False)[0]
+#  
 
-    import numpy as np
-    from astropy import coordinates as coo
-    from astropy import units as u
-    from scipy.spatial.transform import Rotation as R
-    import math
-    from random import random
-
-    # alpha in [0, 360] deg
-    alpha = np.random.rand()*360.*u.deg
-
-    # delta in [-90, 90] deg
-    delta = math.acos(random()*2.-1.)*u.rad
-    delta = 90.*u.deg - delta.to(u.deg)
-    phi = 90.*u.deg
-
-    v = coo.spherical_to_cartesian(1., delta, alpha)
-    r1 = R.from_euler('z', -alpha.value, degrees=True)
-    r2 = R.from_euler('y', -90.+delta.value, degrees=True)
-    r3 = R.from_euler('z', -phi.value, degrees=True)
-
-    v1 = r1.apply(v)
-    v2 = r2.apply(v1)
-    v_new = r3.apply(v2)
 
 
+from astropy import coordinates as coo
+from astropy.modeling import rotations as R
+from astropy import units as u
 
+
+phi = float(center.phi)*u.deg
+theta = float(center.theta)*u.deg
+pa = float(center.pa)*u.deg
+r = R.from_euler('zxz', [phi.value, theta.value, pa.value], degrees=True)
+v = coo.spherical_to_cartesian(1., theta.to(u.rad), phi.to(u.rad))
+r.apply(v)
+
+#########
+
+alpha = np.random.rand()*360.*u.deg
+delta = math.acos(np.random.random()*2.-1)*u.rad
+delta = delta.to(u.deg) - 90.*u.deg
+phi = 90.*u.deg
+
+v = coo.spherical_to_cartesian(1., alpha, delta)
+#Note that the input angles should be in latitude/longitude or
+#elevation/azimuthal form.  I.e., the origin is along the equator
+#rather than at the north pole.
+
+lon = alpha
+lat = delta
+phi = phi
+
+r = R.EulerAngleRotation(lon, lat, phi, 'zyz')
+#Rotates one coordinate system into another (fixed) coordinate system.
+#All coordinate systems are right-handed. The sign of the angles is
+#determined by the right-hand rule.
+
+############
+
+
+v = [6, 5, 20.]
+v = v / np.sqrt(np.dot(v,v))
+d, lat, lon = coo.cartesian_to_spherical(v[0], v[1], v[2])
+phi = 0.*u.rad
+r = R.EulerAngleRotation(lon, lat, phi, 'zyz')
+v_new = r.spherical2cartesian(lon, lat)
+
+
+
+
+
+
+r = R.from_euler('zyz', [lon.value, lat, 0.], degrees=False)
+r.apply(v)
+
+
+"""
+Source code for astropy.modeling.rotations
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+
+https://docs.astropy.org/en/stable/_modules/astropy/modeling/rotations.html
+
+Implements rotations, including spherical rotations as defined in WCS Paper II
+[1]_
+
+`RotateNative2Celestial` and `RotateCelestial2Native` follow the convention in
+WCS Paper II to rotate to/from a native sphere and the celestial sphere.
+
+The implementation uses `EulerAngleRotation`. The model parameters are
+three angles: the longitude (``lon``) and latitude (``lat``) of the
+fiducial point in the celestial system (``CRVAL`` keywords in FITS),
+and the longitude of the celestial pole in the native system
+(``lon_pole``). The Euler angles are ``lon+90``, ``90-lat`` and
+``-(lon_pole-90)``.  """
+
+
+
+#  # esto anda:
+#  v = [0., 1., 0.]
+#  d, lat, lon = coo.cartesian_to_spherical(v[0], v[1], v[2])
+#  lat = lat.value + np.pi/2.
+#  r = R.from_euler('zyz', [lon.value, lat, 0.], degrees=False)
+#  r.apply(v)
+#  
+#  
+#  v = [0., 1., 1.]
+#  v = v / sqrt(np.dot(v,v))
+#  d, lat, lon = coo.cartesian_to_spherical(v[0], v[1], v[2])
+#  lat = lat.value + np.pi/2.
+#  r = R.from_euler('zyz', [lon.value, lat, 0.], degrees=False)
+#  r.apply(v)

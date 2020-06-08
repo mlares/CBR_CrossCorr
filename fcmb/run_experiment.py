@@ -1,30 +1,96 @@
+# load_ext autoreload
+# autoreload 2
 
-#from fcmb import fcmb
+
+import fcmb
 from Parser import Parser
-
 from sys import argv
- 
+
+import pandas
+import healpy as hp
+import numpy as np
+
+
 if len(argv) > 1:
     config = Parser(argv[1])
 else:
     config = Parser()
 
-# f = fcmb.corr(conf)
+
+X = fcmb.Correlation(config)
+
+X.load_centers()
+
+X.load_tracers()
+
+
+
+# # Leer datos y devolver x, y, z, T
 # 
-# # Select centers and tracer# Select centers and tracerss
+# # read CMB data
+# from PixelSky import SkyMap
+# print(config.filenames.datadir_cmb + config.filenames.filedata_cmb_mapa)
+# nside = int(config['cmb']['filedata_cmb_nside'])
+# mapa = SkyMap(nside)
+# mask = SkyMap(nside)
+# filedata = config['cmb']['datadir_cmb']+ config['cmb']['filedata_cmb_mapa']
+# mapa.load(filedata, field=( int(config['cmb']['filedata_field_mapa']) ))
+# filedata = config['cmb']['datadir_cmb']+ config['cmb']['filedata_cmb_mask']
+# mask.load(filedata, field=( int(config['cmb']['filedata_field_mask']) ))
 # 
-# f.set_parameters()
-# f.run()
 # 
 # 
 # 
+# # Leer datos y devolver x, y, z, PA
+# 
+# # read Galaxy catalog
+# glx_catalog = config['glx']['datadir_glx']+config['glx']['filedata_glx']
+# glx = pd.read_csv(glx_catalog, delim_whitespace=True, header=9)
+# 
+# phi_healpix = glx['RAdeg']*np.pi/180.
+# theta_healpix = (90. - glx['DECdeg'])*np.pi/180.
+# glx['vec'] = hp.ang2vec(theta_healpix, phi_healpix).tolist()
+# 
+# 
+# 
+
+
+
+   
+#   glx['pa'] = len(glx['RAdeg'])* [1.]  #### HAY QUE LEERLO
 #   
+#   # filter galaxy catalog...
+#   # l = ['A','X','B']
+#   # spiral = [any([s in x for s in l]) for x in glx['type']]
+#   # edgeon = glx['b/a'] < 0.8
+#   # subset = spiral & edgeon
+#   # centers = np.array(list(glx.vec[subset]))
 #   
-#   
-#   
-#   
-#   
-#   
+#   centers = pd.DataFrame(list(zip(phi_healpix, theta_healpix, glx['pa'])),
+#             columns=['phi','theta', 'pa'] )
+#                                               
+
+
+## # Select centers and tracer# Select centers and tracerss
+#X = fcmb.Correlation(config)
+#
+#
+#X.set_samples(centers=, tracers=)
+#
+#X.set_parameters()
+#
+#X.run()
+
+
+
+
+
+
+
+
+
+
+
 #   # %load_ext autoreload
 #   # %autoreload 2
 #   # para que ande el run recargando el modulo desde ipython

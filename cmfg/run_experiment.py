@@ -2,7 +2,7 @@
 # autoreload 2
 
 
-import fcmb
+import cmfg
 from Parser import Parser
 from sys import argv
 
@@ -16,45 +16,9 @@ if len(argv) > 1:
 else:
     config = Parser()
 
-
-X = fcmb.Correlation(config)
-
+X = cmfg.Correlation(config)
 X.load_centers()
-
 X.load_tracers()
-
-
-
-# # Leer datos y devolver x, y, z, T
-# 
-# # read CMB data
-# from PixelSky import SkyMap
-# print(config.filenames.datadir_cmb + config.filenames.filedata_cmb_mapa)
-# nside = int(config['cmb']['filedata_cmb_nside'])
-# mapa = SkyMap(nside)
-# mask = SkyMap(nside)
-# filedata = config['cmb']['datadir_cmb']+ config['cmb']['filedata_cmb_mapa']
-# mapa.load(filedata, field=( int(config['cmb']['filedata_field_mapa']) ))
-# filedata = config['cmb']['datadir_cmb']+ config['cmb']['filedata_cmb_mask']
-# mask.load(filedata, field=( int(config['cmb']['filedata_field_mask']) ))
-# 
-# 
-# 
-# 
-# # Leer datos y devolver x, y, z, PA
-# 
-# # read Galaxy catalog
-# glx_catalog = config['glx']['datadir_glx']+config['glx']['filedata_glx']
-# glx = pd.read_csv(glx_catalog, delim_whitespace=True, header=9)
-# 
-# phi_healpix = glx['RAdeg']*np.pi/180.
-# theta_healpix = (90. - glx['DECdeg'])*np.pi/180.
-# glx['vec'] = hp.ang2vec(theta_healpix, phi_healpix).tolist()
-# 
-# 
-# 
-
-
 
    
 #   glx['pa'] = len(glx['RAdeg'])* [1.]  #### HAY QUE LEERLO
@@ -72,7 +36,7 @@ X.load_tracers()
 
 
 ## # Select centers and tracer# Select centers and tracerss
-#X = fcmb.Correlation(config)
+#X = cmfg.Correlation(config)
 #
 #
 #X.set_samples(centers=, tracers=)

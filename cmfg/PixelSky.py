@@ -48,7 +48,7 @@ class SkyMap():
 
         import healpy as hp
 
-        d = hp.read_map(filename, h=True, **kwargs)
+        d = hp.read_map(filename, h=True, dtype=float, **kwargs)
         self.data = d[0]
         self.header = d[1]
 

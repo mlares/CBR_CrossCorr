@@ -20,6 +20,9 @@ X = cmfg.Correlation(config)
 X.load_centers()
 X.load_tracers()
 
+H, K = X.run()
+
+
    
 #   glx['pa'] = len(glx['RAdeg'])* [1.]  #### HAY QUE LEERLO
 #   

@@ -5,6 +5,7 @@ import pandas as pd
 import pickle
 import sys
 from tqdm import tqdm
+from astropy import units as u
 
 DEFAULT_INI = 'set_experiment.ini'
 
@@ -201,20 +202,50 @@ class Parser(ConfigParser):
 
         experiment_id = self['experiment']['experiment_id']
 
-        n_jobs = self['run']['n_jobs']
-        r_start = self['run']['r_start']
-        r_stop = self['run']['r_stop']
-        r_n_bins = self['run']['r_n_bins']
-        r_units = self['run']['r_units']
-        theta_start = self['run']['theta_start']
-        theta_stop = self['run']['theta_stop']
-        theta_n_bins = self['run']['theta_n_bins']
-        theta_units = self['run']['theta_units']
+        n_jobs = int(self['run']['n_jobs'])
+        
         scale_to = self['run']['scale_to']
         norm_to = self['run']['norm_to']
         adaptative_resolution = self['run']['adaptative_resolution']
+        
         dir_output = self['out']['dir_output']
         dir_plots = self['out']['dir_plots']
+
+
+        r_units_str = self['run']['r_units']
+        if r_units_str == 'arcmin':
+            r_units = u.arcmin
+        elif r_units_str == 'arcsec':
+            r_units = u.arcsec
+        elif r_units_str == 'parsec':
+            r_units = u.parsec
+        elif r_units_str == 'kpc':
+            r_units = u.kpc
+        else:
+            r_units = 1.
+        r_start = float(self['run']['r_start'])
+        r_stop = float(self['run']['r_stop'])
+        r_start = r_start*r_units
+        r_stop = r_stop*r_units
+        r_n_bins = int(self['run']['r_n_bins'])
+
+        theta_units_str = self['run']['theta_units']
+        if theta_units_str == 'arcmin':
+            theta_units = u.arcmin
+        elif theta_units_str == 'arcsec':
+            theta_units = u.arcsec
+        elif theta_units_str == 'rad':
+            theta_units = u.rad
+        elif theta_units_str == 'deg':
+            theta_units = u.deg
+        else:
+            theta_units = 1.
+        theta_start = float(self['run']['theta_start'])
+        theta_stop = float(self['run']['theta_stop'])
+        theta_start = theta_start*theta_units
+        theta_stop = theta_stop*theta_units
+        theta_n_bins = int(self['run']['theta_n_bins'])
+
 
         choice = self['run']['disk_align']
         if choice.lower() in 'yesitrue':

@@ -1,5 +1,3 @@
-# FCMB
-
 from PixelSky import SkyMap
 # from SkyUnits import SkyUnits
 import pandas as pd
@@ -12,26 +10,28 @@ from math import atan2, pi
 from tqdm import tqdm
 
 
-def unwrap_run(correlation, c, **kwarg):
+def unwrap_run(arg, **kwarg):
     """Wrap the serial function for parallel run.
 
     This function just call the serialized version, but allows to run
     it concurrently.
     """
-    return correlation.run(c, **kwarg)
+    return Correlation.run_batch(*arg, **kwarg)
 
 
 class Correlation:
     '''
-    class Correlation
-    methods for computing angular correlations in the CMB.
+    Correlation (class): compute angular correlations in CMB maps.
 
     Methods
     -------
-    load_centers:
-    load_tracers:
-    corr_II:
-    run: computes the radial profile.
+    load_centers : load centers from file using config.
+    load_tracers : load tracers from file using config.
+    initialize_counters : initialize counters
+    run : computes the radial profile for a sample.
+    run_single : computes the radial profile for a single center. 
+    run_batch : serial computation of the radial profile for a sample. 
+    run_batch_II : computes in parallel the radial profile for a sample.
     '''
 
     def __init__(self, config):
@@ -61,83 +61,28 @@ class Correlation:
         """load tracers.
         """
         conf = self.config.filenames
-        print(conf.datadir_cmb + conf.filedata_cmb_mapa)
+        if self.config.p.verbose:
+            print(conf.datadir_cmb + conf.filedata_cmb_mapa)
+
         nside = int(self.config['cmb']['filedata_cmb_nside'])
         mapa = SkyMap(nside)
         mask = SkyMap(nside)
 
         filedata = conf.datadir_cmb + conf.filedata_cmb_mapa
         column = int(self.config['cmb']['filedata_field_mapa'])
-        mapa.load(filedata, field=(column))
+        mapa.load(filedata, field=(column), verbose=self.config.p.verbose)
         filedata = conf.datadir_cmb + conf.filedata_cmb_mask
         column = int(self.config['cmb']['filedata_field_mask'])
-        mask.load(filedata, field=(column))
-
+        mask.load(filedata, field=(column), verbose=self.config.p.verbose)
         # averiguar si esto duplica la memoria
         self.map = mapa
         self.mask = mask
 
-    def corr_II(self):
-        """Run an experiment, parallel version.
+    def initialize_counters(self):
+        """Initialize counters.
 
-        Paralelization is made on the basis of centers
-
-        Parameters
-        ----------
-        params: the parameters
-        njobs: number of jobs
+        This is kept separate for organization of the code.
         """
-        from joblib import Parallel, delayed
-
-        njobs = self.conf.p.njobs
-        Pll = Parallel(n_jobs=njobs, verbose=5, prefer="processes")
-
-        params = self.params.values.tolist()
-        ids = np.array(range(len(params))) + 1
-
-        interactive = self.conf.p.interactive
-        ntr = [interactive]*len(params)
-
-        z = zip([self]*len(params), params, ids, ntr)
-
-        d_experiment = delayed(unwrap_run)
-
-        results = Pll(d_experiment(i) for i in z)
-
-        # ojo a esto hay que procesarlo para que sea una correlacion
-        return results
-
-    def run(self, parallel=False, njobs=1):
-        """Compute correlations in CMB data.
-
-        When centers are fixed, it returns the stacked radial profile.
-
-
-        Parameters
-        ----------
-        centers : list or array
-            List of centers
-        tracers : list or array
-            List of tracers
-
-        Returns
-        -------
-        H : array like
-            Cross product of temperatures
-        K : array like
-            Counts of pairs contributing to each bin
-        profile : array like
-            Array containing the mean temperature per radial bin.
-            Angular bins are also returned if required from
-            configuration.  The scale of the radial coordinate depends
-            on the configuration. All configuration parameters are
-            stored in self.config
-        """
-        if self.config.p.verbose:
-            print('starting computations...')
-        skymap = self.map
-        centers = self.centers
-
         Nb_r = self.config.p.r_n_bins
         Nb_a = self.config.p.theta_n_bins
 
@@ -160,68 +105,220 @@ class Correlation:
         Ht = np.zeros([Nb_r, Nb_a])
         Kt = np.zeros([Nb_r, Nb_a])
 
-        if self.config.p.showp:
-            bf1 = "{desc}: {percentage:.4f}% | "
-            bf2 = "{n_fmt}/{total_fmt} ({elapsed}/{remaining})"
-            bf = ''.join([bf1, bf2])
-            total = centers.shape[0]
-            iterator = tqdm(centers.itertuples(), total=total, bar_format=bf)
+        return bins2d, rmax, Ht, Kt
+
+    def run_single(self, center):
+        """Compute the temperature profile in CMB data.
+
+        Parameters
+        ----------
+        center : list or array
+            List of centers
+
+        Returns
+        -------
+        H : array like
+            Cross product of temperatures
+        K : array like
+            Counts of pairs contributing to each bin
+        profile : array like
+            Array containing the mean temperature per radial bin.
+            Angular bins are also returned if required from
+            configuration.  The scale of the radial coordinate depends
+            on the configuration. All configuration parameters are
+            stored in self.config
+        """
+        skymap = self.map
+        bins2d, rmax, Ht, Kt = self.initialize_counters()
+
+        # compute rotation matrix
+        phi = float(center[1].phi)
+        theta = float(center[1].theta)
+        pa = float(center[1].pa)
+
+        vector = hp.ang2vec(center[1].theta, center[1].phi)
+        rotate_pa = R.from_euler('zyz', [-phi, -theta, pa])
+
+        # querydisc
+        listpixs = hp.query_disc(skymap.nside,
+                                 vector,
+                                 rmax,
+                                 inclusive=True,
+                                 fact=4,
+                                 nest=False)
+        dists = []
+        thetas = []
+        temps = skymap.data[listpixs]
+
+        for ipix in listpixs:
+
+            v = hp.pix2vec(skymap.nside, ipix)
+            w = rotate_pa.apply(v)
+
+            # each center is in position [0,0,1] wrt the new system
+            dist = hp.rotator.angdist(w, [0, 0, 1])
+            """el angulo wrt el plano de la galaxia (dado por PA) sale
+            de la proyeccion en los nuevos ejes X (o sea w[0])
+            e Y (o sea w[1])"""
+            theta = atan2(w[1], w[0])
+            if theta < 0:
+                theta = theta + 2*pi
+
+            dists.append(dist[0])
+            thetas.append(theta)
+
+        H = np.histogram2d(dists, thetas, bins=bins2d,
+                           weights=temps, density=False)
+        K = np.histogram2d(dists, thetas, bins=bins2d,
+                           density=False)
+
+        return H[0], K[0]
+
+    def run(self, parallel=None, njobs=1):
+        """Compute correlations in CMB data.
+
+        When centers are fixed, it returns the stacked radial profile.
+
+        Parameters
+        ----------
+        centers : list or array
+            List of centers
+        tracers : list or array
+            List of tracers
+
+        Returns
+        -------
+        H : array like
+            Cross product of temperatures
+        K : array like
+            Counts of pairs contributing to each bin
+        profile : array like
+            Array containing the mean temperature per radial bin.
+            Angular bins are also returned if required from
+            configuration.  The scale of the radial coordinate depends
+            on the configuration. All configuration parameters are
+            stored in self.config
+        """
+        if isinstance(parallel, bool):
+            run_parallel = parallel
         else:
-            iterator = centers.itertuples()
+            run_parallel = self.config.p.run_parallel
 
-        for center in iterator:
+        if self.config.p.verbose:
+            print('starting computations...')
 
-            # compute rotation matrix
-            phi = float(center.phi)
-            theta = float(center.theta)
-            pa = float(center.pa)
+        centers = self.centers
+        bins2d, rmax, Ht, Kt = self.initialize_counters()
 
-            vector = hp.ang2vec(center.theta, center.phi)
-            rotate_pa = R.from_euler('zyz', [-phi, -theta, pa])
+        if run_parallel:
+            Ht, Kt = self.run_batch_II()
+        else:
+            centers_ids = range(len(centers))
+            Ht, Kt = self.run_batch(centers, centers_ids)
 
-            # querydisc
-            listpixs = hp.query_disc(skymap.nside,
-                                     vector,
-                                     rmax,
-                                     inclusive=True,
-                                     fact=4,
-                                     nest=False)
+        R = Ht / np.maximum(Kt, 1)
 
-            dists = []
-            thetas = []
-            temps = skymap.data[listpixs]
+        return R
 
-            for ipix in listpixs:
+    def run_batch(self, centers, index):
+        """Compute correlations in CMB data.
 
-                v = hp.pix2vec(skymap.nside, ipix)
-                w = rotate_pa.apply(v)
+        When centers are fixed, it returns the stacked radial profile.
 
-                # each center is in position [0,0,1] wrt the new system
-                dist = hp.rotator.angdist(w, [0, 0, 1])
-                """el angulo wrt el plano de la galaxia (dado por PA) sale
-                de la proyeccion en los nuevos ejes X (o sea w[0])
-                e Y (o sea w[1])"""
-                theta = atan2(w[1], w[0])
-                if theta < 0:
-                    theta = theta + 2*pi
+        Parameters
+        ----------
+        centers : list or array
+            List of centers
+        tracers : list or array
+            List of tracers
 
-                dists.append(dist[0])
-                thetas.append(theta)
+        Returns
+        -------
+        H : array like
+            Cross product of temperatures
+        K : array like
+            Counts of pairs contributing to each bin
+        profile : array like
+            Array containing the mean temperature per radial bin.
+            Angular bins are also returned if required from
+            configuration.  The scale of the radial coordinate depends
+            on the configuration. All configuration parameters are
+            stored in self.config
 
-            H = np.histogram2d(dists, thetas, bins=bins2d,
-                               weights=temps, density=False)
-            H = H[0]
-            K = np.histogram2d(dists, thetas, bins=bins2d,
-                               density=False)
-            K = K[0]
-            print(H)
+        Notes
+        -----
+        This function admits a pandas dataframe or a row, with the
+        type as traversed with df.iterrows()
+        When called from unwrap_run, it receives a "row"
+        """
+        bins2d, rmax, Ht, Kt = self.initialize_counters()
 
-        Ht = Ht + H
-        Kt = Kt + K
+        if isinstance(centers, tuple):
+            # a single center
+            Ht, Kt = self.run_single(centers)
+        else:
+            # a dataframe
+            if self.config.p.showp:
+                bf1 = "{desc}: {percentage:.4f}% | "
+                bf2 = "{n_fmt}/{total_fmt} ({elapsed}/{remaining})"
+                bf = ''.join([bf1, bf2])
+                total = centers.shape[0]
+                iterator = tqdm(centers.iterrows(),
+                                total=total, bar_format=bf)
+            else:
+                total = centers.shape[0]
+                iterator = centers.iterrows()
 
-        return([Ht, Kt])
+            for center in iterator:
+                H, K = self.run_single(center)
+                Ht = Ht + H
+                Kt = Kt + K
+
+        return Ht, Kt
+
+    def run_batch_II(self):
+        """Run an experiment, parallel version.
+
+        Paralelization is made on the basis of centers
+
+        Parameters
+        ----------
+        njobs: number of jobs
+        """
+        from joblib import Parallel, delayed
+
+        njobs = self.config.p.n_jobs
+
+        if self.config.p.verbose:
+            vlevel = 5
+        else:
+            vlevel = 0
+        Pll = Parallel(n_jobs=njobs, verbose=vlevel, prefer="processes")
+        #centers = self.centers.values.tolist()
+        centers = self.centers
+        Ncenters = centers.shape[0]
+        ids = np.array(range(Ncenters)) + 1
+
+        cntrs = []
+        for c in centers.iterrows():
+            cntrs.append(c)
+
+        z = zip([self]*Ncenters, cntrs, ids)
+
+        d_experiment = delayed(unwrap_run)
+
+        results = Pll(d_experiment(i) for i in z)
+
+        Ht, Kt = np.array(results).sum(axis=0)
+        return Ht, Kt
 
     def testrot(self):
+        """Test rotation.
+
+        Loads data and extract a small disc centered on each centers,
+        in order to erify if the angles between selected pixels and
+        their respective centers are small
+        """
         centers = self.centers
         skymap = self.map
         if self.config.p.showp:
@@ -253,8 +350,8 @@ class Correlation:
             for ipix in listpixs:
                 v = hp.pix2vec(skymap.nside, ipix)
                 w = rotate_pa.apply(v)
-                print(v, w)
                 # w must be ~ [0,0,1]
+                print(v, w)
 
 
 def test_rotation(N):
@@ -270,3 +367,4 @@ def test_rotation(N):
         rotate_pa = R.from_euler('zyz', [-alpha, -colatitude, 0], degrees=True)
         w = rotate_pa.apply(v)
         print(f"alpha={alpha}, delta={delta}\n v={v}\nw={w}\n")
+        return None

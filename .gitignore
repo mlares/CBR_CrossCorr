@@ -60,6 +60,7 @@ coverage.xml
 *.pot
 
 # Sphinx documentation
+doc
 doc/build/
 
 # PyBuilder
@@ -97,3 +98,11 @@ venv.bak/
 # gvim backup
 *.swp
 *.swo
+
+
+# Specific to this project:
+
+
+
+TaskList.rst
+dat

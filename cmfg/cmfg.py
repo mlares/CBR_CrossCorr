@@ -41,7 +41,7 @@ class Correlation:
         self.mask = None
 
     def load_centers(self):
-        """load centers.
+        """load centers from galaxy catalogue.
         """
         conf = self.config.filenames
         # read Galaxy catalog
@@ -53,12 +53,11 @@ class Correlation:
         glx['phi'] = phi_healpix
         glx['theta'] = theta_healpix
         glx['vec'] = hp.ang2vec(theta_healpix, phi_healpix).tolist()
-        glx['pa'] = np.zeros(glx.shape[0])
 
         self.centers = glx
 
     def load_tracers(self):
-        """load tracers.
+        """load tracers from Healpix map of the CMBR.
         """
         conf = self.config.filenames
         if self.config.p.verbose:
@@ -78,8 +77,11 @@ class Correlation:
         self.map = mapa
         self.mask = mask
 
+        npixs = hp.nside2npix(nside)
+        self.masked_indices = [i for i in range(npixs) if self.mask.data[i]]
+
     def initialize_counters(self):
-        """Initialize counters.
+        """Initialize counters for temperature map aroung centers.
 
         This is kept separate for organization of the code.
         """
@@ -107,8 +109,49 @@ class Correlation:
 
         return bins2d, rmax, Ht, Kt
 
+    def select_subsample_centers(self):
+        """Make a selection of centers.
+
+        The selection is made by filtering on galxy type and distance
+        to the galaxy (redshift). This makes use of the configuration
+        paramenters from the .ini file.
+        """
+        zmin = self.config.p.redshift_min
+        zmax = self.config.p.redshift_max
+
+        Sa_lbl = ['1','2']
+        Sb_lbl = ['3','4']
+        Sc_lbl = ['5','6','7','8']
+        Sd_lbl = ['7','8']
+        Sno_lbl = ['10', '11', '12', '15', '16', '19', '20']
+
+        Stypes = []
+        gtypes = self.config.p.galaxy_types
+        for s in gtypes:
+            if s=='a':
+                for k in Sa_lbl:
+                    Stypes.append(k)
+            if s=='b':
+                for k in Sb_lbl:
+                    Stypes.append(k)
+            if s=='c':
+                for k in Sc_lbl:
+                    Stypes.append(k)
+            if s=='d':
+                for k in Sd_lbl:
+                    Stypes.append(k)
+
+        filt = []
+        for t in self.centers['type']:
+            f = t[0] in Stypes and not (t[:2] in Sno_lbl)
+            filt.append(f)
+
+        self.centers = self.centers[filt]
+
+        return None
+
     def run_single(self, center):
-        """Compute the temperature profile in CMB data.
+        """Compute the temperature in CMB data around a center.
 
         Parameters
         ----------
@@ -175,7 +218,7 @@ class Correlation:
         return H[0], K[0]
 
     def run(self, parallel=None, njobs=1):
-        """Compute correlations in CMB data.
+        """Compute (stacked) temperature map in CMB data around centers.
 
         When centers are fixed, it returns the stacked radial profile.
 
@@ -221,7 +264,7 @@ class Correlation:
         return R
 
     def run_batch(self, centers, index):
-        """Compute correlations in CMB data.
+        """Compute (stacked) temperature map in CMB data around centers.
 
         When centers are fixed, it returns the stacked radial profile.
 
@@ -277,7 +320,7 @@ class Correlation:
         return Ht, Kt
 
     def run_batch_II(self):
-        """Run an experiment, parallel version.
+        """Compute (stacked, parallel) temperature map around centers.
 
         Paralelization is made on the basis of centers
 

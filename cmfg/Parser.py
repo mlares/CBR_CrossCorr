@@ -305,6 +305,12 @@ class Parser(ConfigParser):
             print('warning in .ini file: output: clobber')
             overwrite = False 
 
+        galaxy_types = self['run']['galaxy_types']
+        galaxy_types = galaxy_types.split(' ')
+
+        redshift_min = float(self['run']['redshift_min'])
+        redshift_max = float(self['run']['redshift_max'])
+
         names = ['experiment_id',
                  'n_jobs',
                  'r_start',
@@ -319,6 +325,9 @@ class Parser(ConfigParser):
                  'norm_to',
                  'adaptative_resolution',
                  'disk_align',
+                 'galaxy_types',
+                 'redshift_min',
+                 'redshift_max',
                  'verbose',
                  'run_parallel',
                  'showp',
@@ -344,6 +353,9 @@ class Parser(ConfigParser):
                      norm_to,
                      adaptative_resolution,
                      disk_align,
+                     galaxy_types,
+                     redshift_min,
+                     redshift_max,
                      verbose,
                      run_parallel,
                      showp,

@@ -1,14 +1,16 @@
 from PixelSky import SkyMap
-# from SkyUnits import SkyUnits
+from astropy.cosmology import FlatLambdaCDM
+from scipy.spatial.transform import Rotation as R
+
 import pandas as pd
 import healpy as hp
 import numpy as np
-from astropy import units as u
-# import time
-from scipy.spatial.transform import Rotation as R
 from math import atan2, pi
 from tqdm import tqdm
+from astropy import units as u
+from sys import exit
 
+pipeline_check = 0
 
 def unwrap_run(arg, **kwarg):
     """Wrap the serial function for parallel run.
@@ -35,52 +37,121 @@ class Correlation:
     '''
 
     def __init__(self, config):
+        """Initialize instance of class Correlation.
+
+        This class is prepared to work with a list of centers
+        and a pixelized skymap (healpix).  Both datasets must
+        be loaded with the methods load_centers, load_tracers.
+        """
         self.config = config
         self.centers = None
         self.map = None
         self.mask = None
 
     def load_centers(self):
-        """load centers from galaxy catalogue.
+        """load centers from a galaxy catalogue.
+
+        The galaxy catalogue must contain a row with the column names, 
+        which also must include:
+        - RAdeg
+        - DECdeg
+        - type
         """
+        self.check_centers()
         conf = self.config.filenames
+
         # read Galaxy catalog
         glx_catalog = conf.datadir_glx + conf.filedata_glx
         glx = pd.read_csv(glx_catalog, delim_whitespace=True, header=9)
 
+        # healpix coordinates
         phi_healpix = glx['RAdeg']*np.pi/180.
         theta_healpix = (90. - glx['DECdeg'])*np.pi/180.
         glx['phi'] = phi_healpix
         glx['theta'] = theta_healpix
         glx['vec'] = hp.ang2vec(theta_healpix, phi_healpix).tolist()
+        
+        # glx angular size [u.rad]
+        glxsize = np.array(glx['r_ext'])
+        glxsize = glxsize*u.arcsec
+        glxsize = glxsize.to(u.rad)
+        glx['glx_size_rad'] = glxsize
+        
+        # glx physical size [u.kpc]
+        self.cosmo = FlatLambdaCDM(H0=67.8, Om0=0.308)
+        z = glx['v']/300000.
+        z = z.where(glx['v']>1.e-3, 1.e-3)
+        glx['v'] = z
+        d_A = self.cosmo.angular_diameter_distance(z=glx['v'])
+        r_kpc = (glxsize * d_A).to(u.kpc, u.dimensionless_angles())
+        glx['glx_size_kpc'] = r_kpc
+
+        # limit the number of centers
+        glx = glx[:self.config.p.max_centers]
+
+        global pipeline_check
+        pipeline_check += 1
 
         self.centers = glx
 
+    def check_centers(self):
+        """Check if the centers file is admisible.
+
+        """
+        from os import path, makedirs
+        conf = self.config.filenames
+        # read Galaxy catalog
+        glx_catalog = conf.datadir_glx + conf.filedata_glx
+        glx = pd.read_csv(glx_catalog, delim_whitespace=True, header=9)
+        k = glx.keys()
+
+        f = True
+        f = f and 'pa' in k
+        f = f and 'RAdeg' in k
+        f = f and 'DECdeg' in k
+
+        global pipeline_check
+        pipeline_check += 10
+
+        if not f:
+            print('Error in loading galaxy data')
+            exit()
+
     def load_tracers(self):
         """load tracers from Healpix map of the CMBR.
+
         """
+        global pipeline_check
+        pipeline_check += 100
+
         conf = self.config.filenames
         if self.config.p.verbose:
             print(conf.datadir_cmb + conf.filedata_cmb_mapa)
 
         nside = int(self.config['cmb']['filedata_cmb_nside'])
-        mapa = SkyMap(nside)
-        mask = SkyMap(nside)
 
+        mapa = SkyMap(nside)
         filedata = conf.datadir_cmb + conf.filedata_cmb_mapa
         column = int(self.config['cmb']['filedata_field_mapa'])
         mapa.load(filedata, field=(column), verbose=self.config.p.verbose)
+
+        mask = SkyMap(nside)
         filedata = conf.datadir_cmb + conf.filedata_cmb_mask
         column = int(self.config['cmb']['filedata_field_mask'])
         mask.load(filedata, field=(column), verbose=self.config.p.verbose)
+
         # averiguar si esto duplica la memoria
         self.map = mapa
-        self.mask = mask
 
         npixs = hp.nside2npix(nside)
-        self.masked_indices = [i for i in range(npixs) if self.mask.data[i]]
+        msk = [True]*npixs
+        for ipix, pix in enumerate(mask.data):
+            if pix < .1:
+                msk[ipix] = False
 
-    def initialize_counters(self):
+        self.mask = msk
+
+    def initialize_counters(self, center=None):
         """Initialize counters for temperature map aroung centers.
 
         This is kept separate for organization of the code.
@@ -91,9 +162,25 @@ class Correlation:
         # breaks for angular distance, in radians
         rmin = self.config.p.r_start
         rmax = self.config.p.r_stop
-        rmin = rmin.to(u.rad).value
-        rmax = rmax.to(u.rad).value
+        if not self.config.p.norm_to:
+            rmin = rmin.to(u.rad).value
+            rmax = rmax.to(u.rad).value
         radii = np.linspace(rmin, rmax, Nb_r+1)
+
+        if center is None:
+            norm_factor = 1.
+        else:
+            norm_factor = 1.
+            if self.config.p.norm_to == 'PHYSICAL':
+                z = center['v']/300000.
+                d_A = self.cosmo.angular_diameter_distance(z=z)
+                # pass from rad to kpc and divide by glx. size in kpc
+                norm_factor = d_A.to(u.kpc)/center['glx_size_kpc']
+                norm_factor = norm_factor.value
+
+            if self.config.p.norm_to == 'ANGULAR':
+                # divide by glx. size in rad
+                norm_factor = center['glx_size_rad']
 
         # breaks for angle, in radians
         amin = self.config.p.theta_start
@@ -107,7 +194,7 @@ class Correlation:
         Ht = np.zeros([Nb_r, Nb_a])
         Kt = np.zeros([Nb_r, Nb_a])
 
-        return bins2d, rmax, Ht, Kt
+        return bins2d, rmax, Ht, Kt, norm_factor
 
     def select_subsample_centers(self):
         """Make a selection of centers.
@@ -116,9 +203,8 @@ class Correlation:
         to the galaxy (redshift). This makes use of the configuration
         paramenters from the .ini file.
         """
-        zmin = self.config.p.redshift_min
-        zmax = self.config.p.redshift_max
 
+        # filter on: galaxy type ----------------
         Sa_lbl = ['1','2']
         Sb_lbl = ['3','4']
         Sc_lbl = ['5','6','7','8']
@@ -141,11 +227,20 @@ class Correlation:
                 for k in Sd_lbl:
                     Stypes.append(k)
 
-        filt = []
+        filt1 = []
         for t in self.centers['type']:
             f = t[0] in Stypes and not (t[:2] in Sno_lbl)
-            filt.append(f)
+            filt1.append(f)
 
+        # filter on: redshift ---------------------
+        zmin = self.config.p.redshift_min
+        zmax = self.config.p.redshift_max
+        filt2 = []
+        for z in self.centers['v']:
+            f = z>zmin and z<zmax
+            filt2.append(f)
+
+        filt = np.logical_and(filt1, filt2)
         self.centers = self.centers[filt]
 
         return None
@@ -172,7 +267,7 @@ class Correlation:
             stored in self.config
         """
         skymap = self.map
-        bins2d, rmax, Ht, Kt = self.initialize_counters()
+        bins2d, rmax, Ht, Kt, norm_factor = self.initialize_counters(center[1])
 
         # compute rotation matrix
         phi = float(center[1].phi)
@@ -191,22 +286,31 @@ class Correlation:
                                  nest=False)
         dists = []
         thetas = []
-        temps = skymap.data[listpixs]
+        temps = []
 
         for ipix in listpixs:
+
+            if not self.mask[ipix]:
+                continue
 
             v = hp.pix2vec(skymap.nside, ipix)
             w = rotate_pa.apply(v)
 
-            # each center is in position [0,0,1] wrt the new system
+            """Angular distance
+            each center is in position [0,0,1] wrt the new system.
+            Normalization is made if required from configuration file"""
             dist = hp.rotator.angdist(w, [0, 0, 1])
-            """el angulo wrt el plano de la galaxia (dado por PA) sale
-            de la proyeccion en los nuevos ejes X (o sea w[0])
-            e Y (o sea w[1])"""
+            dist = dist * norm_factor
+
+            """Position angle
+            the angle wrt the galaxy disk (given by the position angle
+            results from the projection of the new axes X (i.e. w[0])
+            and Y (i.e. w[1])"""
             theta = atan2(w[1], w[0])
             if theta < 0:
                 theta = theta + 2*pi
-
+        
+            temps.append(skymap.data[ipix])
             dists.append(dist[0])
             thetas.append(theta)
 
@@ -242,6 +346,9 @@ class Correlation:
             on the configuration. All configuration parameters are
             stored in self.config
         """
+        if pipeline_check != 111:
+            print('Functions load_centers and load_tracers are required')
+            exit()
         if isinstance(parallel, bool):
             run_parallel = parallel
         else:
@@ -251,7 +358,7 @@ class Correlation:
             print('starting computations...')
 
         centers = self.centers
-        bins2d, rmax, Ht, Kt = self.initialize_counters()
+        bins2d, rmax, Ht, Kt, norm_factor = self.initialize_counters()
 
         if run_parallel:
             Ht, Kt = self.run_batch_II()
@@ -294,7 +401,7 @@ class Correlation:
         type as traversed with df.iterrows()
         When called from unwrap_run, it receives a "row"
         """
-        bins2d, rmax, Ht, Kt = self.initialize_counters()
+        bins2d, rmax, Ht, Kt, norm_factor = self.initialize_counters()
 
         if isinstance(centers, tuple):
             # a single center

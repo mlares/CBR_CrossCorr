@@ -204,15 +204,21 @@ class Parser(ConfigParser):
 
         n_jobs = int(self['run']['n_jobs'])
         
-        scale_to = self['run']['scale_to']
-        norm_to = self['run']['norm_to']
         adaptative_resolution = self['run']['adaptative_resolution']
         
         dir_output = self['out']['dir_output']
         dir_plots = self['out']['dir_plots']
 
+        max_centers = self['glx']['max_centers']
+        try:
+            int(max_centers)
+        except Exception:
+            max_centers = None
+        else:
+            max_centers = int(max_centers)
 
-        r_units_str = self['run']['r_units']
+        norm_to = False
+        r_units_str = self['run']['r_units'].lower()
         if r_units_str == 'arcmin':
             r_units = u.arcmin
         elif r_units_str == 'arcsec':
@@ -221,8 +227,19 @@ class Parser(ConfigParser):
             r_units = u.parsec
         elif r_units_str == 'kpc':
             r_units = u.kpc
+        elif r_units_str in ['physical']:
+            norm_to = 'PHYSICAL'
+            r_units = 1.*u.dimensionless_unscaled
+        elif r_units_str in ['angular']:
+            norm_to = 'ANGULAR'
+            r_units = 1.*u.dimensionless_unscaled 
+        elif r_units_str in ['cosine']:
+            norm_to = 'COS'
+            r_units = 1.*u.dimensionless_unscaled 
         else:
+            print('Warning: not recognized radial unit or normalization')
             r_units = 1.
+
         r_start = float(self['run']['r_start'])
         r_stop = float(self['run']['r_stop'])
         r_start = r_start*r_units
@@ -245,7 +262,6 @@ class Parser(ConfigParser):
         theta_start = theta_start*theta_units
         theta_stop = theta_stop*theta_units
         theta_n_bins = int(self['run']['theta_n_bins'])
-
 
         choice = self['run']['disk_align']
         if choice.lower() in 'yesitrue':
@@ -321,13 +337,13 @@ class Parser(ConfigParser):
                  'theta_stop',
                  'theta_n_bins',
                  'theta_units',
-                 'scale_to',
                  'norm_to',
                  'adaptative_resolution',
                  'disk_align',
                  'galaxy_types',
                  'redshift_min',
                  'redshift_max',
+                 'max_centers',
                  'verbose',
                  'run_parallel',
                  'showp',
@@ -349,13 +365,13 @@ class Parser(ConfigParser):
                      theta_stop,
                      theta_n_bins,
                      theta_units,
-                     scale_to,
                      norm_to,
                      adaptative_resolution,
                      disk_align,
                      galaxy_types,
                      redshift_min,
                      redshift_max,
+                     max_centers,
                      verbose,
                      run_parallel,
                      showp,
@@ -386,30 +402,32 @@ class Parser(ConfigParser):
             print(self.message)
             print('Checking settings...')
 
-        # output directory
-        if not path.isdir(self.p.dir_output):
-            print(f"Directory {self.p.dir_output} does not exist")
-
+        # Check or create output directory for the current experiment
+        if path.isdir(self.p.dir_output):
+            dir_exp = (f"{self.p.dir_output}/"
+                       f"{self.p.experiment_id}")
             try:
-                makedirs(self.p.dir_output)
+                makedirs(dir_exp)
                 if self.p.verbose:
-                    print("Directory ", self.p.dir_output,  " Created ")
+                    print("Directory ", dir_exp,  " Created ")
             except FileExistsError:
-                # directory already exists
                 pass
-
-        # experiment directory
-        ID_dir = self.p.dir_output + self.p.experiment_id
-        if not path.isdir(ID_dir):
-            print(f"Directory {ID_dir} does not exist")
-
-            try:
-                makedirs(ID_dir)
-                if self.p.verbose:
-                    print("Directory ", ID_dir,  " Created ")
-            except FileExistsError:
                 # directory already exists
-                pass
+        else:
+            msg = f"Directory {self.p.dir_output} does not exist!"
+            raise NotADirectoryError(msg)
+ 
+        #if path.isdir(self.p.dir_output):
+        #    print(f"Directory {self.p.dir_output} does not exist")
+
+        #    try:
+        #        makedirs(self.p.dir_output)
+        #        if self.p.verbose:
+        #            print("Directory ", self.p.dir_output,  " Created ")
+        #    except FileExistsError:
+        #        # directory already exists
+        #        pass
+
 
         # plots directory
         if not path.isdir(self.p.dir_plots):

@@ -16,20 +16,23 @@ X = cmfg.Correlation(config)
 X.load_centers()
 X.load_tracers()
 X.select_subsample_centers()
-R = X.run()
+H, K, R = X.run()
 
 fout = f"R_{config.p.experiment_id}.pk"
 pickle.dump(R, open(fout, 'wb'))
 
 
-#from matplotlib import pyplot as plt
-#fig = plt.figure()
-#ax = fig.add_subplot()
-#
-#Rt = R.transpose()
-#for r in Rt:
-#    ax.plot(r)
-#plt.show()
+from matplotlib import pyplot as plt
+
+fig = plt.figure()
+ax = fig.add_subplot()
+
+Rt = R.transpose()
+for i, r in enumerate(Rt):
+    ax.plot(r, label=str(i))
+ax.grid()
+ax.legend()
+plt.show()
 
 
    

@@ -5,8 +5,9 @@ from scipy.spatial.transform import Rotation as R
 import pandas as pd
 import healpy as hp
 import numpy as np
-from math import atan2, pi
+from math import atan2, pi, acos
 from tqdm import tqdm
+from random import random
 from astropy import units as u
 from sys import exit
 
@@ -53,9 +54,12 @@ class Correlation:
 
         The galaxy catalogue must contain a row with the column names, 
         which also must include:
-        - RAdeg
-        - DECdeg
-        - type
+        - RAdeg: right ascention
+        - DECdeg: declination
+        - type : galaxy type, following ZCAT convention
+          See http://tdc-www.harvard.edu/2mrs/2mrs_readme.html, Sec. F
+        - r_ext : galaxy size, in arcsec (from xsc:r_ext)
+          https://old.ipac.caltech.edu/2mass/releases/allsky/doc/sec2_3a.html
         """
         self.check_centers()
         conf = self.config.filenames
@@ -63,6 +67,16 @@ class Correlation:
         # read Galaxy catalog
         glx_catalog = conf.datadir_glx + conf.filedata_glx
         glx = pd.read_csv(glx_catalog, delim_whitespace=True, header=9)
+
+        # Control sample (random centers)
+        if self.config.p.control_sample:
+            N = glx.shape[0]
+            r_ra = [random()*360. for _ in range(N)]
+            r_dec = [random()*2.-1. for _ in range(N)]
+            r_dec = [acos(r) for r in r_dec]
+            r_dec = [90. - r*180./pi for r in r_dec]
+            glx['RAdeg'] = r_ra
+            glx['DECdeg'] = r_dec
 
         # healpix coordinates
         phi_healpix = glx['RAdeg']*np.pi/180.
@@ -97,6 +111,8 @@ class Correlation:
     def check_centers(self):
         """Check if the centers file is admisible.
 
+        This method verifies that the dataframe contains the
+        neccesary columns.
         """
         from os import path, makedirs
         conf = self.config.filenames
@@ -120,6 +136,8 @@ class Correlation:
     def load_tracers(self):
         """load tracers from Healpix map of the CMBR.
 
+        In this case tracers are the pixels used to compute the radial
+        temperature profile.
         """
         global pipeline_check
         pipeline_check += 100
@@ -154,6 +172,7 @@ class Correlation:
     def initialize_counters(self, center=None):
         """Initialize counters for temperature map aroung centers.
 
+        Also sets normalization factor if neccesary.
         This is kept separate for organization of the code.
         """
         Nb_r = self.config.p.r_n_bins
@@ -259,12 +278,6 @@ class Correlation:
             Cross product of temperatures
         K : array like
             Counts of pairs contributing to each bin
-        profile : array like
-            Array containing the mean temperature per radial bin.
-            Angular bins are also returned if required from
-            configuration.  The scale of the radial coordinate depends
-            on the configuration. All configuration parameters are
-            stored in self.config
         """
         skymap = self.map
         bins2d, rmax, Ht, Kt, norm_factor = self.initialize_counters(center[1])
@@ -328,17 +341,13 @@ class Correlation:
 
         Parameters
         ----------
-        centers : list or array
-            List of centers
-        tracers : list or array
-            List of tracers
+        parallel : bool (optional)
+            run in parallel?
+        njobs : integer (optional)
+            number of jobs
 
         Returns
         -------
-        H : array like
-            Cross product of temperatures
-        K : array like
-            Counts of pairs contributing to each bin
         profile : array like
             Array containing the mean temperature per radial bin.
             Angular bins are also returned if required from
@@ -358,8 +367,6 @@ class Correlation:
             print('starting computations...')
 
         centers = self.centers
-        bins2d, rmax, Ht, Kt, norm_factor = self.initialize_counters()
-
         if run_parallel:
             Ht, Kt = self.run_batch_II()
         else:
@@ -368,7 +375,7 @@ class Correlation:
 
         R = Ht / np.maximum(Kt, 1)
 
-        return R
+        return Ht, Kt, R
 
     def run_batch(self, centers, index):
         """Compute (stacked) temperature map in CMB data around centers.
@@ -379,21 +386,14 @@ class Correlation:
         ----------
         centers : list or array
             List of centers
-        tracers : list or array
-            List of tracers
+        index : index number
+            a dummy number (required for parallel)
 
         Returns
         -------
         H : array like
             Cross product of temperatures
         K : array like
-            Counts of pairs contributing to each bin
-        profile : array like
-            Array containing the mean temperature per radial bin.
-            Angular bins are also returned if required from
-            configuration.  The scale of the radial coordinate depends
-            on the configuration. All configuration parameters are
-            stored in self.config
 
         Notes
         -----
@@ -430,10 +430,6 @@ class Correlation:
         """Compute (stacked, parallel) temperature map around centers.
 
         Paralelization is made on the basis of centers
-
-        Parameters
-        ----------
-        njobs: number of jobs
         """
         from joblib import Parallel, delayed
 
@@ -444,7 +440,6 @@ class Correlation:
         else:
             vlevel = 0
         Pll = Parallel(n_jobs=njobs, verbose=vlevel, prefer="processes")
-        #centers = self.centers.values.tolist()
         centers = self.centers
         Ncenters = centers.shape[0]
         ids = np.array(range(Ncenters)) + 1

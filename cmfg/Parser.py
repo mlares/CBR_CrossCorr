@@ -217,6 +217,16 @@ class Parser(ConfigParser):
         else:
             max_centers = int(max_centers)
 
+
+        choices = self['glx']['control_sample']
+        if choices.lower() in 'yesitrue':
+            control_sample = True
+        elif choices.lower() in 'nofalse':
+            control_sample = False
+        else:
+            control_sample = False
+ 
+
         norm_to = False
         r_units_str = self['run']['r_units'].lower()
         if r_units_str == 'arcmin':
@@ -329,6 +339,7 @@ class Parser(ConfigParser):
 
         names = ['experiment_id',
                  'n_jobs',
+                 'control_sample',
                  'r_start',
                  'r_stop',
                  'r_n_bins',
@@ -357,6 +368,7 @@ class Parser(ConfigParser):
 
         res = parset(experiment_id,
                      n_jobs,
+                     control_sample,
                      r_start,
                      r_stop,
                      r_n_bins,

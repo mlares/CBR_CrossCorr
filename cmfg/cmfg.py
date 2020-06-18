@@ -13,6 +13,7 @@ from sys import exit
 
 pipeline_check = 0
 
+
 def unwrap_run(arg, **kwarg):
     """Wrap the serial function for parallel run.
 
@@ -32,8 +33,8 @@ class Correlation:
     load_tracers : load tracers from file using config.
     initialize_counters : initialize counters
     run : computes the radial profile for a sample.
-    run_single : computes the radial profile for a single center. 
-    run_batch : serial computation of the radial profile for a sample. 
+    run_single : computes the radial profile for a single center.
+    run_batch : serial computation of the radial profile for a sample.
     run_batch_II : computes in parallel the radial profile for a sample.
     '''
 
@@ -48,11 +49,12 @@ class Correlation:
         self.centers = None
         self.map = None
         self.mask = None
+        pipeline_check = 0
 
     def load_centers(self):
         """load centers from a galaxy catalogue.
 
-        The galaxy catalogue must contain a row with the column names, 
+        The galaxy catalogue must contain a row with the column names,
         which also must include:
         - RAdeg: right ascention
         - DECdeg: declination
@@ -84,17 +86,17 @@ class Correlation:
         glx['phi'] = phi_healpix
         glx['theta'] = theta_healpix
         glx['vec'] = hp.ang2vec(theta_healpix, phi_healpix).tolist()
-        
+
         # glx angular size [u.rad]
         glxsize = np.array(glx['r_ext'])
         glxsize = glxsize*u.arcsec
         glxsize = glxsize.to(u.rad)
         glx['glx_size_rad'] = glxsize
-        
+
         # glx physical size [u.kpc]
         self.cosmo = FlatLambdaCDM(H0=67.8, Om0=0.308)
         z = glx['v']/300000.
-        z = z.where(glx['v']>1.e-3, 1.e-3)
+        z = z.where(glx['v'] > 1.e-3, 1.e-3)
         glx['v'] = z
         d_A = self.cosmo.angular_diameter_distance(z=glx['v'])
         r_kpc = (glxsize * d_A).to(u.kpc, u.dimensionless_angles())
@@ -114,7 +116,6 @@ class Correlation:
         This method verifies that the dataframe contains the
         neccesary columns.
         """
-        from os import path, makedirs
         conf = self.config.filenames
         # read Galaxy catalog
         glx_catalog = conf.datadir_glx + conf.filedata_glx
@@ -152,6 +153,9 @@ class Correlation:
         filedata = conf.datadir_cmb + conf.filedata_cmb_mapa
         column = int(self.config['cmb']['filedata_field_mapa'])
         mapa.load(filedata, field=(column), verbose=self.config.p.verbose)
+
+        #Npix = hp.nside2npix(nside)
+        #mapa.data = [random() for _ in range(Npix)]
 
         mask = SkyMap(nside)
         filedata = conf.datadir_cmb + conf.filedata_cmb_mask
@@ -191,24 +195,27 @@ class Correlation:
         else:
             norm_factor = 1.
             if self.config.p.norm_to == 'PHYSICAL':
-                z = center['v']/300000.
+                z = center['v']
                 d_A = self.cosmo.angular_diameter_distance(z=z)
                 # pass from rad to kpc and divide by glx. size in kpc
-                norm_factor = d_A.to(u.kpc)/center['glx_size_kpc']
-                norm_factor = norm_factor.value
+                norm_factor = d_A.to(u.kpc, u.dimensionless_angles())
+                norm_factor = norm_factor.value / center['glx_size_kpc']
+                rmax = rmax*center['glx_size_rad']
 
             if self.config.p.norm_to == 'ANGULAR':
                 # divide by glx. size in rad
-                norm_factor = center['glx_size_rad']
+                norm_factor = 1. / center['glx_size_rad']
+                rmin = rmin*center['glx_size_rad']
+                rmax = rmax*center['glx_size_rad']
 
         # breaks for angle, in radians
         amin = self.config.p.theta_start
         amax = self.config.p.theta_stop
         amin = amin.to(u.rad).value
         amax = amax.to(u.rad).value
-        angles = np.linspace(amin, amax, Nb_a+1)
 
         # initialize 2d histogram
+        angles = np.linspace(amin, amax, Nb_a+1)
         bins2d = [radii, angles]
         Ht = np.zeros([Nb_r, Nb_a])
         Kt = np.zeros([Nb_r, Nb_a])
@@ -224,25 +231,25 @@ class Correlation:
         """
 
         # filter on: galaxy type ----------------
-        Sa_lbl = ['1','2']
-        Sb_lbl = ['3','4']
-        Sc_lbl = ['5','6','7','8']
-        Sd_lbl = ['7','8']
+        Sa_lbl = ['1', '2']
+        Sb_lbl = ['3', '4']
+        Sc_lbl = ['5', '6', '7', '8']
+        Sd_lbl = ['7', '8']
         Sno_lbl = ['10', '11', '12', '15', '16', '19', '20']
 
         Stypes = []
         gtypes = self.config.p.galaxy_types
         for s in gtypes:
-            if s=='a':
+            if s == 'a':
                 for k in Sa_lbl:
                     Stypes.append(k)
-            if s=='b':
+            if s == 'b':
                 for k in Sb_lbl:
                     Stypes.append(k)
-            if s=='c':
+            if s == 'c':
                 for k in Sc_lbl:
                     Stypes.append(k)
-            if s=='d':
+            if s == 'd':
                 for k in Sd_lbl:
                     Stypes.append(k)
 
@@ -256,7 +263,7 @@ class Correlation:
         zmax = self.config.p.redshift_max
         filt2 = []
         for z in self.centers['v']:
-            f = z>zmin and z<zmax
+            f = z > zmin and z < zmax
             filt2.append(f)
 
         filt = np.logical_and(filt1, filt2)
@@ -290,13 +297,8 @@ class Correlation:
         vector = hp.ang2vec(center[1].theta, center[1].phi)
         rotate_pa = R.from_euler('zyz', [-phi, -theta, pa])
 
-        # querydisc
-        listpixs = hp.query_disc(skymap.nside,
-                                 vector,
-                                 rmax,
-                                 inclusive=True,
-                                 fact=4,
-                                 nest=False)
+        listpixs = hp.query_disc(skymap.nside, vector, rmax,
+                                 inclusive=False, fact=4, nest=False)
         dists = []
         thetas = []
         temps = []
@@ -322,15 +324,14 @@ class Correlation:
             theta = atan2(w[1], w[0])
             if theta < 0:
                 theta = theta + 2*pi
-        
+
             temps.append(skymap.data[ipix])
             dists.append(dist[0])
             thetas.append(theta)
 
         H = np.histogram2d(dists, thetas, bins=bins2d,
                            weights=temps, density=False)
-        K = np.histogram2d(dists, thetas, bins=bins2d,
-                           density=False)
+        K = np.histogram2d(dists, thetas, bins=bins2d, density=False)
 
         return H[0], K[0]
 
@@ -355,7 +356,7 @@ class Correlation:
             on the configuration. All configuration parameters are
             stored in self.config
         """
-        if pipeline_check != 111:
+        if pipeline_check < 111:
             print('Functions load_centers and load_tracers are required')
             exit()
         if isinstance(parallel, bool):
@@ -373,9 +374,10 @@ class Correlation:
             centers_ids = range(len(centers))
             Ht, Kt = self.run_batch(centers, centers_ids)
 
+        bins2d = self.initialize_counters()[0]
         R = Ht / np.maximum(Kt, 1)
 
-        return Ht, Kt, R
+        return Ht, Kt, bins2d, R
 
     def run_batch(self, centers, index):
         """Compute (stacked) temperature map in CMB data around centers.

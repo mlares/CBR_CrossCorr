@@ -8,6 +8,14 @@ from tqdm import tqdm
 from astropy import units as u
 
 DEFAULT_INI = 'set_experiment.ini'
+ 
+def is_number(string):
+    try:
+        float(string)
+        return True
+    except ValueError:
+        return False
+
 
 class Parser(ConfigParser):
     """parser class.
@@ -217,7 +225,6 @@ class Parser(ConfigParser):
         else:
             max_centers = int(max_centers)
 
-
         choices = self['glx']['control_sample']
         if choices.lower() in 'yesitrue':
             control_sample = True
@@ -267,11 +274,44 @@ class Parser(ConfigParser):
             theta_units = u.deg
         else:
             theta_units = 1.
-        theta_start = float(self['run']['theta_start'])
-        theta_stop = float(self['run']['theta_stop'])
-        theta_start = theta_start*theta_units
+        theta_n_bins = int(self['run']['theta_n_bins']) 
+
+        theta_stop = self['run']['theta_stop']
+        if is_number(theta_stop):
+            theta_stop = float(theta_stop)
+            num = 1.
+        elif 'pi' in theta_stop:
+            n = theta_stop.replace('pi','').replace('*','')
+            try:
+                float(n)
+            except:
+                num = 1.
+            else:
+                num = float(n)
+            theta_stop = num * np.pi
+        else:
+            print('Error: number not recognized in theta_stop')
+            exit()
         theta_stop = theta_stop*theta_units
-        theta_n_bins = int(self['run']['theta_n_bins'])
+
+ 
+        theta_start = self['run']['theta_start']
+        if is_number(theta_start):
+            theta_start = float(theta_start)
+            num = 1.
+        elif 'pi' in theta_start:
+            n = theta_start.replace('pi','').replace('*','')
+            try:
+                float(n)
+            except:
+                num = float(n)
+            else:
+                num = 1.
+        else:
+            print('Error: number not recognized in theta_start')
+            exit()
+        theta_start = num * np.pi
+        theta_start = theta_start*theta_units
 
         choice = self['run']['disk_align']
         if choice.lower() in 'yesitrue':

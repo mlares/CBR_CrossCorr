@@ -16,6 +16,18 @@ def is_number(string):
     except ValueError:
         return False
 
+def choice_yn(string, default_choice=None):
+    if string.lower() in 'yesitrue':
+        choice = True
+    elif string.lower() in 'nofalse':
+        choice = False
+    else:
+        if isinstance(default_choice, bool):
+            choice = default_choice
+        else:
+            raise AttributeError('dfasf')
+    return choice
+
 
 class Parser(ConfigParser):
     """parser class.
@@ -197,6 +209,8 @@ class Parser(ConfigParser):
         -------
             list of parameters as a named tuple
         """
+        from collections import namedtuple
+
         if isinstance(keys, list):
             # override configuration file with arguments
             if len(keys) != len(values):
@@ -225,14 +239,11 @@ class Parser(ConfigParser):
         else:
             max_centers = int(max_centers)
 
-        choices = self['glx']['control_sample']
-        if choices.lower() in 'yesitrue':
-            control_sample = True
-        elif choices.lower() in 'nofalse':
-            control_sample = False
-        else:
-            control_sample = False
- 
+        choice = self['glx']['control_sample']
+        control_sample = choice_yn(choice, default_choice=False)
+                               
+        choice = self['glx']['control_ranmap']
+        control_ranmap = choice_yn(choice, default_choice=False)
 
         norm_to = False
         r_units_str = self['run']['r_units'].lower()
@@ -314,63 +325,25 @@ class Parser(ConfigParser):
         theta_start = theta_start*theta_units
 
         choice = self['run']['disk_align']
-        if choice.lower() in 'yesitrue':
-            disk_align = True
-        elif choice.lower() in 'nofalse':
-            disk_align = False
-        else:
-            print('warning in .ini file: UX: verbose')
-            disk_align = False
+        disk_align = choice_yn(choice, default_choice=False)
  
         choice = self['run']['adaptative_resolution']
-        if choice.lower() in 'yesitrue':
-            adaptative_resolution = True
-        elif choice.lower() in 'nofalse':
-            adaptative_resolution = False
-        else:
-            print('warning in .ini file: UX: verbose')
-            adaptative_resolution = False
+        adaptative_resolution = choice_yn(choice, default_choice=False)
 
+        choice = self['run']['run_parallel']
+        run_parallel = choice_yn(choice, default_choice=False)
+
+        choice = self['UX']['show_progress']
+        showp = choice_yn(choice, default_choice=False)
+
+        choice = self['out']['clobber']
+        overwrite = choice_yn(choice, default_choice=False)
 
         choice = self['UX']['verbose']
-        if choice.lower() in 'yesitrue':
-            verbose = True
-        elif choice.lower() in 'nofalse':
-            verbose = False
-        else:
-            print('warning in .ini file: UX: verbose')
-            verbose = False
-
+        verbose = choice_yn(choice, default_choice=True)
         if verbose:
             print('loading parameters...')
-        from collections import namedtuple
-
-        choices = self['run']['run_parallel']
-        if choices.lower() in 'yesitrue':
-            run_parallel = True
-        elif choices.lower() in 'nofalse':
-            run_parallel = False
-        else:
-            run_parallel = False
  
-        choice = self['UX']['show_progress']
-        if choice.lower() in 'yesitrue':
-            showp = True
-        elif choice.lower() in 'nofalse':
-            showp = False
-        else:
-            print('warning in .ini file: UX: show_progress')
-            showp = False
- 
-        string_overwrite = self['out']['clobber']
-        if string_overwrite.lower() in 'yesitrue':
-            overwrite = True
-        elif string_overwrite.lower() in 'nofalse':
-            overwrite = False
-        else:
-            print('warning in .ini file: output: clobber')
-            overwrite = False 
-
         galaxy_types = self['run']['galaxy_types']
         galaxy_types = galaxy_types.split(' ')
 
@@ -380,6 +353,7 @@ class Parser(ConfigParser):
         names = ['experiment_id',
                  'n_jobs',
                  'control_sample',
+                 'control_ranmap',
                  'r_start',
                  'r_stop',
                  'r_n_bins',
@@ -409,6 +383,7 @@ class Parser(ConfigParser):
         res = parset(experiment_id,
                      n_jobs,
                      control_sample,
+                     control_ranmap,
                      r_start,
                      r_stop,
                      r_n_bins,

@@ -102,9 +102,6 @@ class Correlation:
         r_kpc = (glxsize * d_A).to(u.kpc, u.dimensionless_angles())
         glx['glx_size_kpc'] = r_kpc
 
-        # limit the number of centers
-        glx = glx[:self.config.p.max_centers]
-
         global pipeline_check
         pipeline_check += 1
 
@@ -148,24 +145,23 @@ class Correlation:
             print(conf.datadir_cmb + conf.filedata_cmb_mapa)
 
         nside = int(self.config['cmb']['filedata_cmb_nside'])
+        npixs = hp.nside2npix(nside)
 
         mapa = SkyMap(nside)
         filedata = conf.datadir_cmb + conf.filedata_cmb_mapa
         column = int(self.config['cmb']['filedata_field_mapa'])
         mapa.load(filedata, field=(column), verbose=self.config.p.verbose)
 
-        #Npix = hp.nside2npix(nside)
-        #mapa.data = [random() for _ in range(Npix)]
+        if self.config.p.control_ranmap:
+            mapa.data = np.random.normal(loc=1.e-6, scale=1.e-8, size=npixs)
+
+        self.map = mapa
 
         mask = SkyMap(nside)
         filedata = conf.datadir_cmb + conf.filedata_cmb_mask
         column = int(self.config['cmb']['filedata_field_mask'])
         mask.load(filedata, field=(column), verbose=self.config.p.verbose)
 
-        # averiguar si esto duplica la memoria
-        self.map = mapa
-
-        npixs = hp.nside2npix(nside)
         msk = [True]*npixs
         for ipix, pix in enumerate(mask.data):
             if pix < .1:
@@ -269,6 +265,18 @@ class Correlation:
         filt = np.logical_and(filt1, filt2)
         self.centers = self.centers[filt]
 
+        # limit the number of centers
+        self.centers = self.centers[:self.config.p.max_centers]
+
+        # filter galaxy catalog...
+        # l = ['A','X','B']
+        # spiral = [any([s in x for s in l]) for x in glx['type']]
+        # edgeon = glx['b/a'] < 0.8
+        # subset = spiral & edgeon
+        # centers = np.array(list(glx.vec[subset]))
+        #centers = pd.DataFrame(list(zip(phi_healpix, theta_healpix,
+        #                       glx['pa'])), columns=['phi','theta', 'pa'])
+
         return None
 
     def run_single(self, center):
@@ -369,15 +377,23 @@ class Correlation:
 
         centers = self.centers
         if run_parallel:
-            Ht, Kt = self.run_batch_II()
+            H, K = self.run_batch_II()
         else:
             centers_ids = range(len(centers))
-            Ht, Kt = self.run_batch(centers, centers_ids)
+            H, K = self.run_batch(centers, centers_ids)
 
-        bins2d = self.initialize_counters()[0]
-        R = Ht / np.maximum(Kt, 1)
+        #Ht = np.zeros([X.config.p.r_n_bins, X.config.p.theta_n_bins])
+        #Ht = [0]*len(H[0])
+        #for h in H:
+        #    Ht = Ht + h
+        #Kt = [0]*len(K[0])
+        #for h in K:
+        #    Kt = Kt + h
+        #bins2d = self.initialize_counters()[0]
+        #R = Ht / np.maximum(Kt, 1)
+        #return Ht, Kt, bins2d, R
 
-        return Ht, Kt, bins2d, R
+        return H, K
 
     def run_batch(self, centers, index):
         """Compute (stacked) temperature map in CMB data around centers.
@@ -407,7 +423,7 @@ class Correlation:
 
         if isinstance(centers, tuple):
             # a single center
-            Ht, Kt = self.run_single(centers)
+            H, K = self.run_single(centers)
         else:
             # a dataframe
             if self.config.p.showp:
@@ -421,12 +437,14 @@ class Correlation:
                 total = centers.shape[0]
                 iterator = centers.iterrows()
 
+            H = []
+            K = []
             for center in iterator:
-                H, K = self.run_single(center)
-                Ht = Ht + H
-                Kt = Kt + K
+                Hi, Ki = self.run_single(center)
+                H.append(Hi)
+                K.append(Ki)
 
-        return Ht, Kt
+        return H, K
 
     def run_batch_II(self):
         """Compute (stacked, parallel) temperature map around centers.
@@ -438,7 +456,7 @@ class Correlation:
         njobs = self.config.p.n_jobs
 
         if self.config.p.verbose:
-            vlevel = 5
+            vlevel = 11
         else:
             vlevel = 0
         Pll = Parallel(n_jobs=njobs, verbose=vlevel, prefer="processes")
@@ -456,7 +474,15 @@ class Correlation:
 
         results = Pll(d_experiment(i) for i in z)
 
-        Ht, Kt = np.array(results).sum(axis=0)
+        # totals:
+        # Ht, Kt = np.array(results).sum(axis=0)
+
+        Ht = []
+        Kt = []
+        for r in results:
+            Ht.append(r[0])
+            Kt.append(r[1])
+
         return Ht, Kt
 
     def testrot(self):

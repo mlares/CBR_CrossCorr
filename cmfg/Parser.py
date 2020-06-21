@@ -29,6 +29,11 @@ def choice_yn(string, default_choice=None):
     return choice
 
 
+# Idea: change named tuple by class:
+# class parameters:
+# initialize with default parameters.
+
+
 class Parser(ConfigParser):
     """parser class.
 
@@ -245,6 +250,9 @@ class Parser(ConfigParser):
         choice = self['glx']['control_ranmap']
         control_ranmap = choice_yn(choice, default_choice=False)
 
+        choice = self['glx']['control_angles']
+        control_angles = choice_yn(choice, default_choice=False)
+
         norm_to = False
         r_units_str = self['run']['r_units'].lower()
         if r_units_str == 'arcmin':
@@ -286,6 +294,24 @@ class Parser(ConfigParser):
         else:
             theta_units = 1.
         theta_n_bins = int(self['run']['theta_n_bins']) 
+ 
+        theta_start = self['run']['theta_start']
+        if is_number(theta_start):
+            theta_start = float(theta_start)
+            num = 1.
+        elif 'pi' in theta_start:
+            n = theta_start.replace('pi','').replace('*','')
+            try:
+                float(n)
+            except:
+                num = 1.
+            else:
+                num = float(n)
+            theta_start = num * np.pi
+        else:
+            print('Error: number not recognized in theta_start')
+            exit()
+        theta_start = theta_start*theta_units                                 
 
         theta_stop = self['run']['theta_stop']
         if is_number(theta_stop):
@@ -305,24 +331,6 @@ class Parser(ConfigParser):
             exit()
         theta_stop = theta_stop*theta_units
 
- 
-        theta_start = self['run']['theta_start']
-        if is_number(theta_start):
-            theta_start = float(theta_start)
-            num = 1.
-        elif 'pi' in theta_start:
-            n = theta_start.replace('pi','').replace('*','')
-            try:
-                float(n)
-            except:
-                num = float(n)
-            else:
-                num = 1.
-        else:
-            print('Error: number not recognized in theta_start')
-            exit()
-        theta_start = num * np.pi
-        theta_start = theta_start*theta_units
 
         choice = self['run']['disk_align']
         disk_align = choice_yn(choice, default_choice=False)
@@ -349,11 +357,14 @@ class Parser(ConfigParser):
 
         redshift_min = float(self['run']['redshift_min'])
         redshift_max = float(self['run']['redshift_max'])
+        ellipt_min = float(self['run']['ellipt_min'])
+        ellipt_max = float(self['run']['ellipt_max'])
 
         names = ['experiment_id',
                  'n_jobs',
                  'control_sample',
                  'control_ranmap',
+                 'control_angles',
                  'r_start',
                  'r_stop',
                  'r_n_bins',
@@ -368,6 +379,8 @@ class Parser(ConfigParser):
                  'galaxy_types',
                  'redshift_min',
                  'redshift_max',
+                 'ellipt_min',
+                 'ellipt_max',
                  'max_centers',
                  'verbose',
                  'run_parallel',
@@ -384,6 +397,7 @@ class Parser(ConfigParser):
                      n_jobs,
                      control_sample,
                      control_ranmap,
+                     control_angles,
                      r_start,
                      r_stop,
                      r_n_bins,
@@ -398,6 +412,8 @@ class Parser(ConfigParser):
                      galaxy_types,
                      redshift_min,
                      redshift_max,
+                     ellipt_min,
+                     ellipt_max,
                      max_centers,
                      verbose,
                      run_parallel,

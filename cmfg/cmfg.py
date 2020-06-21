@@ -73,22 +73,23 @@ class Correlation:
         # Control sample (random centers)
         if self.config.p.control_sample:
             N = glx.shape[0]
-            r_ra = [random()*360. for _ in range(N)]
-            r_dec = [random()*2.-1. for _ in range(N)]
-            r_dec = [acos(r) for r in r_dec]
-            r_dec = [90. - r*180./pi for r in r_dec]
-            glx['RAdeg'] = r_ra
-            glx['DECdeg'] = r_dec
+            r_l = [random()*360. for _ in range(N)]
+            r_b = [random()*2.-1. for _ in range(N)]
+            r_b = [acos(r) for r in r_b]
+            r_b = [90. - r*180./pi for r in r_b]
+            glx['l'] = r_l
+            glx['b'] = r_b
 
         # healpix coordinates
-        phi_healpix = glx['RAdeg']*np.pi/180.
-        theta_healpix = (90. - glx['DECdeg'])*np.pi/180.
+        phi_healpix = glx['l']*np.pi/180.
+        theta_healpix = (90. - glx['b'])*np.pi/180.
         glx['phi'] = phi_healpix
         glx['theta'] = theta_healpix
         glx['vec'] = hp.ang2vec(theta_healpix, phi_healpix).tolist()
 
         # glx angular size [u.rad]
         glxsize = np.array(glx['r_ext'])
+        glxsize = 10**glxsize      # !!!!!!!!!!!!!! VERIFICAR
         glxsize = glxsize*u.arcsec
         glxsize = glxsize.to(u.rad)
         glx['glx_size_rad'] = glxsize
@@ -101,6 +102,12 @@ class Correlation:
         d_A = self.cosmo.angular_diameter_distance(z=glx['v'])
         r_kpc = (glxsize * d_A).to(u.kpc, u.dimensionless_angles())
         glx['glx_size_kpc'] = r_kpc
+
+        # glx position angle
+        glx['pa'] = glx['pa']*pi/180.
+        if self.config.p.control_angles:
+            N = glx.shape[0]
+            glx['pa'] = [random()*2*pi for _ in range(N)]
 
         global pipeline_check
         pipeline_check += 1
@@ -207,6 +214,7 @@ class Correlation:
         # breaks for angle, in radians
         amin = self.config.p.theta_start
         amax = self.config.p.theta_stop
+
         amin = amin.to(u.rad).value
         amax = amax.to(u.rad).value
 
@@ -254,7 +262,7 @@ class Correlation:
             f = t[0] in Stypes and not (t[:2] in Sno_lbl)
             filt1.append(f)
 
-        # filter on: redshift ---------------------
+        # filter on: redshift ----------------------------
         zmin = self.config.p.redshift_min
         zmax = self.config.p.redshift_max
         filt2 = []
@@ -262,7 +270,16 @@ class Correlation:
             f = z > zmin and z < zmax
             filt2.append(f)
 
-        filt = np.logical_and(filt1, filt2)
+        
+        # filter on: elliptical isophotal orientation -----
+        boamin = self.config.p.ellipt_min
+        boamax = self.config.p.ellipt_max
+        filt3 = []
+        for boa in self.centers['b/a']:
+            f = boa > boamin and boa < boamax
+            filt3.append(f)
+
+        filt = np.logical_and.reduce((filt1, filt2, filt3))
         self.centers = self.centers[filt]
 
         # limit the number of centers
@@ -303,7 +320,10 @@ class Correlation:
         pa = float(center[1].pa)
 
         vector = hp.ang2vec(center[1].theta, center[1].phi)
-        rotate_pa = R.from_euler('zyz', [-phi, -theta, pa])
+        if self.config.p.disk_align:
+            rotate_pa = R.from_euler('zyz', [-phi, -theta, pa])
+        else:
+            rotate_pa = R.from_euler('zy', [-phi, -theta])
 
         listpixs = hp.query_disc(skymap.nside, vector, rmax,
                                  inclusive=False, fact=4, nest=False)

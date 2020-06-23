@@ -248,7 +248,7 @@ class Correlation:
             opt = s.lower()
             if 'spiral' in opt or 'late' in opt:
                 opt = 'abcd'
-            if 'a' in opt or 'sa' in opt:
+            if ('a' in opt or 'sa' in opt) and not 'early' in opt:
                 Gtypes = sum([Gtypes, Sa_lbl], [])
             if 'b' in opt or 'sb' in opt:
                 Gtypes = sum([Gtypes, Sb_lbl], [])
@@ -259,10 +259,13 @@ class Correlation:
 
         for s in gtypes:
             opt = s.lower()
+            print(opt)
+
             if 'ellipt' in opt or 'early' in opt:
                 opt = 'e'
             if 'e' in opt:
                 Gtypes = sum([Gtypes, E_lbl], [])
+        print(Gtypes)
 
         filt1 = []
         for t in self.centers['type']:

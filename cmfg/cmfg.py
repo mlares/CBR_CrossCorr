@@ -241,29 +241,34 @@ class Correlation:
         Sb_lbl = ['3', '4']
         Sc_lbl = ['5', '6', '7', '8']
         Sd_lbl = ['7', '8']
+        E_lbl = ['-7','-6','-5','-4','-3','-2','-1']
         Sno_lbl = ['10', '11', '12', '15', '16', '19', '20']
         Gtypes = []
         for s in gtypes:
-            if 'a' in s.lower() or 'sa' in s.lower():
-                for k in Sa_lbl:
-                    Gtypes.append(k)
-            if 'b' in s.lower() or 'sb' in s.lower():
-                for k in Sb_lbl:
-                    Gtypes.append(k)
-            if 'c' in s.lower() or 'sc' in s.lower():
-                for k in Sc_lbl:
-                    Gtypes.append(k)
-            if 'd' in s.lower() or 'sd' in s.lower():
-                for k in Sd_lbl:
-                    Gtypes.append(k)
+            opt = s.lower()
+            if 'spiral' in opt or 'late' in opt:
+                opt = 'abcd'
+            if 'a' in opt or 'sa' in opt:
+                Gtypes = sum([Gtypes, Sa_lbl], [])
+            if 'b' in opt or 'sb' in opt:
+                Gtypes = sum([Gtypes, Sb_lbl], [])
+            if 'c' in opt or 'sc' in opt:
+                Gtypes = sum([Gtypes, Sc_lbl], [])
+            if 'd' in opt or 'sd' in opt:
+                Gtypes = sum([Gtypes, Sd_lbl], [])
 
         for s in gtypes:
-            if 'e' in s.lower():
-                Gtypes.append('-7','-6','-5','-4','-3','-2','-1')
+            opt = s.lower()
+            if 'ellipt' in opt or 'early' in opt:
+                opt = 'e'
+            if 'e' in opt:
+                Gtypes = sum([Gtypes, E_lbl], [])
 
         filt1 = []
         for t in self.centers['type']:
-            f = t[0] in Gtypes and not (t[:2] in Sno_lbl)
+            f1 = t[0] in Gtypes and not (t[:2] in Sno_lbl)
+            f2 = t[0:2] in Gtypes and not (t[:2] in Sno_lbl)
+            f = f1 or f2
             filt1.append(f)
 
         # filter on: redshift ----------------------------

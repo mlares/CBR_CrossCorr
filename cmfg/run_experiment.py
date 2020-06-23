@@ -3,7 +3,7 @@
 
 import cmfg
 from Parser import Parser
-from sys import argv
+from sys import argv, exit
 import numpy as np
 import pickle
 
@@ -14,8 +14,12 @@ else:
 
 X = cmfg.Correlation(config)
 X.load_centers()
-X.load_tracers()
 X.select_subsample_centers()
+
+print(f"Number of centers in subsample: {X.centers.shape[0]}")
+exit()
+
+X.load_tracers()
 res = X.run()
 
 H, K = res

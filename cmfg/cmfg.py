@@ -235,31 +235,35 @@ class Correlation:
         """
 
         # filter on: galaxy type ----------------
+        gtypes = self.config.p.galaxy_types
+
         Sa_lbl = ['1', '2']
         Sb_lbl = ['3', '4']
         Sc_lbl = ['5', '6', '7', '8']
         Sd_lbl = ['7', '8']
         Sno_lbl = ['10', '11', '12', '15', '16', '19', '20']
-
-        Stypes = []
-        gtypes = self.config.p.galaxy_types
+        Gtypes = []
         for s in gtypes:
-            if s == 'a':
+            if 'a' in s.lower() or 'sa' in s.lower():
                 for k in Sa_lbl:
-                    Stypes.append(k)
-            if s == 'b':
+                    Gtypes.append(k)
+            if 'b' in s.lower() or 'sb' in s.lower():
                 for k in Sb_lbl:
-                    Stypes.append(k)
-            if s == 'c':
+                    Gtypes.append(k)
+            if 'c' in s.lower() or 'sc' in s.lower():
                 for k in Sc_lbl:
-                    Stypes.append(k)
-            if s == 'd':
+                    Gtypes.append(k)
+            if 'd' in s.lower() or 'sd' in s.lower():
                 for k in Sd_lbl:
-                    Stypes.append(k)
+                    Gtypes.append(k)
+
+        for s in gtypes:
+            if 'e' in s.lower():
+                Gtypes.append('-7','-6','-5','-4','-3','-2','-1')
 
         filt1 = []
         for t in self.centers['type']:
-            f = t[0] in Stypes and not (t[:2] in Sno_lbl)
+            f = t[0] in Gtypes and not (t[:2] in Sno_lbl)
             filt1.append(f)
 
         # filter on: redshift ----------------------------

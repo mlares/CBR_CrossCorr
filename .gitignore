@@ -101,7 +101,7 @@ venv.bak/
 
 
 # Specific to this project:
-
+*.ini
 
 
 TaskList.rst

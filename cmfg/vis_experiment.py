@@ -1,28 +1,35 @@
 # load_ext autoreload
 # autoreload 2
 
+# experiment, parsing and math
 import cmfg
 from Parser import Parser
 from sys import argv
 import numpy as np
 import pickle
-from matplotlib import pyplot as plt
 import math as m
+
+# plots
+from pylab import*
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import cm
+from matplotlib import pyplot as plt
+from matplotlib import ticker
 
 if len(argv) > 1:
     config = Parser(argv[1])
 else:
     config = Parser()
 
-#X = cmfg.Correlation(config)
-#X.load_centers()
-#X.load_tracers()
-#X.select_subsample_centers()
+# ---------------------note----------------------------
+# run_experiment.py must be run before this script
+# -----------------------------------------------------
 
-fout = f"R_{config.p.experiment_id}.pk"
-print(fout)
+f_input = (f"{config.p.dir_output}{config.p.experiment_id}"
+           f"/R_{config.p.experiment_id}.pk")
+print(f_input)
 
-with open(fout, 'rb') as f:
+with open(f_input, 'rb') as f:
     res = pickle.load(f)
 
 H, K = res
@@ -30,6 +37,7 @@ rvals = np.linspace(config.p.r_start, config.p.r_stop, config.p.r_n_bins)
 
 # AGREGAR LAS BANDAS DE ERROR !!!
 
+# Profile: computations
 # ----------------------------------------------------------------------
 Ht = np.zeros([config.p.r_n_bins, config.p.theta_n_bins])
 for h in H:
@@ -57,7 +65,20 @@ profile_microk = profile * 1.e6
 R_para = Rt[para]
 R_perp = Rt[perp]         
 
+# Plot: settings
+# ----------------------------------------------------------------------
+Mycmap = plt.get_cmap('PuOr')
 
+def fmt(x, pos):
+    a, b = '{:.0e}'.format(x).split('e')
+    b = int(b)
+    if a == 0:
+        return r'0'
+    else:
+        return r'${}\times10^{{{}}}$'.format(a, b)
+
+
+# PLOT: Profile
 # ----------------------------------------------------------------------
 fig = plt.figure()
 ax = fig.subplots(1, 1)
@@ -70,7 +91,7 @@ for i, r in enumerate(R_para):
 
 for i, r in enumerate(R_perp):
     rmicrok = r * 1.e6
-    ax.plot(rvals, rmicrok, color='cadetblue', linewidth=5, alpha=0.3)
+    ax.plot(rvals, rmicrok, color='cadetblue', linewidth=5, alpha=0.5)
 
 
 r_para_micro = R_para.sum(axis=0) / len(para) * 1.e6
@@ -86,13 +107,14 @@ ax.grid()
 ax.legend()
 ax.set_xlabel('angular distance to glx center / glx ang size')
 ax.set_ylabel('<$\Delta$T> [$\mu$K]')
-#ax.set_ylim(-25, 10)
 
-fout = f"{config.p.experiment_id}_align_angular.png"
+fout = (f"{config.filenames.dir_plots}{config.p.experiment_id}/"
+        f"{config.p.experiment_id}_align_angular.png")
 fig.savefig(fout)
 plt.close('all')
  
 
+# PLOT: each center
 # ----------------------------------------------------------------------
 fig = plt.figure()
 ax = fig.subplots(2, 1)
@@ -107,12 +129,9 @@ for h, k in zip(H, K):
     ax[0].plot(rvals, p, color='cadetblue', alpha=0.1)
 ax[0].plot(rvals, profile, color='orange', alpha=1)
 
-
 # perfiles de la muestra total por angulos:
-
 R = Ht / np.maximum(Kt, 1)
 Rt = R.transpose()
-
 mn = Rt.mean()
 
 for r in Rt:
@@ -121,55 +140,13 @@ ax[1].plot(rvals, profile, color='orange', alpha=1)
 
 ax[0].grid()
 ax[1].grid()
-#ax.legend()
-fout = f"{config.p.experiment_id}_align_centers.png"
+fout = (f"{config.filenames.dir_plots}{config.p.experiment_id}/"
+        f"{config.p.experiment_id}_align_centers.png")
 fig.savefig(fout)
 plt.close('all')
 
-
-
+# PLOT: each polar augmented
 # ----------------------------------------------------------------------
-from pylab import*
-from mpl_toolkits.mplot3d import Axes3D
-from matplotlib import cm
-
-Nrad = config.p.r_n_bins
-Nth = config.p.theta_n_bins
-rad = np.linspace(config.p.r_start, config.p.r_stop, Nrad+1)
-rads = np.array((rad[1:].value+rad.value[:-1])/2)
-Nrep = 100
-rads = np.repeat(rads, Nrep)
-
-azm = np.linspace(config.p.theta_start, config.p.theta_stop, Nrep*(Nth)+1)
-azs = (azm[1:]+azm[:-1])/2
-azs = azs.value
-
-r, th = np.meshgrid(rads, azs)
-A = np.repeat(Rt, 100, axis=0)
-z = np.repeat(A, 100, axis=1)
-
-fig = plt.figure()
-#ax = Axes3D(fig)
-ax1 = fig.add_subplot(221, projection='polar')
-a = ax1.pcolormesh(th, r, z, cmap=plt.get_cmap('Spectral'))
-plt.thetagrids([theta * 15 for theta in range(360//15)])
-plt.grid()
-
-ax2 = fig.add_subplot(222, projection='polar')
-a = ax2.pcolormesh(th, r, z, cmap=plt.get_cmap('Spectral'))
-plt.thetagrids([theta * 15 for theta in range(360//15)])
-plt.grid()
-
-fout = f"{config.p.experiment_id}_align_polar2.png"
-fig.savefig(fout)
- 
-
-# ----------------------------------------------------------------------
-from pylab import*
-from mpl_toolkits.mplot3d import Axes3D
-from matplotlib import cm
-
-
 fig = plt.figure()
 ax = Axes3D(fig)
 
@@ -187,29 +164,28 @@ azs = azs.value
 
 r, th = np.meshgrid(rads, azs)
 
-A = np.repeat(Rt, 100, axis=0)
+Rt_mK = Rt * 1.e6
+A = np.repeat(Rt_mK, 100, axis=0)
 z = np.repeat(A, 100, axis=1)
 zmin = z.min()
 zmax = z.max()
 zext = max(abs(zmin), abs(zmax))
 
 plt.subplot(projection="polar")
-a = plt.pcolormesh(th, r, z, cmap=plt.get_cmap('Spectral'), 
-                   vmin=-zext, vmax=zext)
-plt.colorbar(a)
-plt.plot(azs, r, color='k', ls='none') 
-plt.thetagrids([theta * 15 for theta in range(360//15)])
-#plt.rgrids([20 * _ for _ in range(0, 50)])
-plt.grid()
-fout = f"{config.p.experiment_id}_align_polar.png"
+cscale = plt.pcolormesh(th, r, z, cmap=Mycmap, 
+                   vmin=-zext, vmax=zext,
+                   linestyle='None',
+                   shading='gouraud')
+fig.colorbar(cscale, ax=ax, shrink=0.8, aspect=50,
+             label='<$\Delta$T> [$\mu$K]')
+
+plt.plot(azs, r, color='none') #, ls='none') 
+fout = (f"{config.filenames.dir_plots}{config.p.experiment_id}/"
+        f"{config.p.experiment_id}_align_polar.png")
 fig.savefig(fout)
-#plt.show()
 
-
+# PLOT: each polar matrix
 # ----------------------------------------------------------------------
-from pylab import*
-from mpl_toolkits.mplot3d import Axes3D
-
 fig = plt.figure()
 ax1 = Axes3D(fig)
 
@@ -222,23 +198,22 @@ rads = np.array((rad[1:]+rad[:-1])/2)
 azm = np.linspace(config.p.theta_start, config.p.theta_stop, Nth+1)
 azs = (azm[1:]+azm[:-1])/2
 azs = azs.value
+azs = azs - (azs[1]-azs[0])/2
 
-r, th = np.meshgrid(rads, azs)
-z = Rt
+r, th = np.meshgrid(rad, azm.value)
 
 plt.subplot(projection="polar")
-a=plt.pcolormesh(th, r, z)
+a=plt.pcolormesh(th, r, Rt, cmap=Mycmap,
+                 linestyle='None')
 plt.colorbar(a)
-plt.plot(azs, r, color='k', ls='none') 
-#plt.thetagrids([theta * 15 for theta in range(360//15)])
-#plt.rgrids([.3 * _ for _ in range(1, 17)])
-#plt.grid()
+#plt.plot(azs, r, color='k', ls='none') 
 
-fout = f"{config.p.experiment_id}_align_polar_original.png"
+fout = (f"{config.filenames.dir_plots}{config.p.experiment_id}/"
+        f"{config.p.experiment_id}_align_polar_original.png")
 fig.savefig(fout)
 
 
-
+# PLOT: each polar box
 # ----------------------------------------------------------------------
 fig = plt.figure()
 ax = fig.add_subplot()
@@ -254,10 +229,69 @@ azs = (azm[1:]+azm[:-1])/2
 azs = azs.value
 
 r, th = np.meshgrid(rads, azs)
-z = Rt
-plt.imshow(z, aspect='auto', origin='lower')
+ 
+Rt_mK = Rt*1.e6
+zmin = Rt_mK.min()
+zmax = Rt_mK.max()
+zext = max(abs(zmin), abs(zmax))
+                    
+cscale = ax.imshow(Rt_mK, aspect='auto', origin='lower',
+                   extent=(rad[0], rad[-1],
+                           azm[0].value, azm[-1].value),
+                   vmin=-zext, vmax=zext,
+                   cmap=Mycmap)
 
-fout = f"{config.p.experiment_id}_align_polar_box.png"
+ax.set_xlabel('angular distance to glx. center / glx. size')
+ax.set_ylabel('angle wrt glx. disk semi-major axis [rad]')
+
+fig.colorbar(cscale, ax=ax, shrink=0.8, aspect=50,
+             label='<$\Delta$T> [$\mu$K]')
+             #format=ticker.FuncFormatter(fmt))
+plt.tight_layout()
+
+fout = (f"{config.filenames.dir_plots}{config.p.experiment_id}/"
+        f"{config.p.experiment_id}_align_polar_box.png")
 fig.savefig(fout)
 
- 
+
+
+
+## ----------------------------------------------------------------------
+#from pylab import*
+#from mpl_toolkits.mplot3d import Axes3D
+#from matplotlib import cm
+#Nrad = config.p.r_n_bins
+#Nth = config.p.theta_n_bins
+#rad = np.linspace(config.p.r_start, config.p.r_stop, Nrad+1)
+#rads = np.array((rad[1:].value+rad.value[:-1])/2)
+#Nrep = 100
+#rads = np.repeat(rads, Nrep)
+#azm = np.linspace(config.p.theta_start, config.p.theta_stop, Nrep*(Nth)+1)
+#azs = (azm[1:]+azm[:-1])/2
+#azs = azs.value
+#r, th = np.meshgrid(rads, azs)
+#A = np.repeat(Rt, 100, axis=0)
+#z = np.repeat(A, 100, axis=1)
+#fig = plt.figure()
+#ax1 = fig.add_subplot(221, projection='polar')
+#a = ax1.pcolormesh(th, r, z, cmap=plt.get_cmap('Spectral'))
+#plt.thetagrids([theta * 15 for theta in range(360//15)])
+#plt.grid()
+#ax2 = fig.add_subplot(222, projection='polar')
+#a = ax2.pcolormesh(th, r, z, cmap=plt.get_cmap('Spectral'))
+#plt.thetagrids([theta * 15 for theta in range(360//15)])
+#plt.grid()
+#fout = f"{config.p.experiment_id}_align_polar2.png"
+#fig.savefig(fout)
+
+
+
+"""
+TO DO:
+
+- barras de error
+- sumar bines para los chicos (adaptative binning)
+- smooth matrix
+- lista de settings
+
+"""

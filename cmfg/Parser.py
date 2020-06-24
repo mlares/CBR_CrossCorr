@@ -484,3 +484,18 @@ class Parser(ConfigParser):
                 # directory already exists
                 pass
 
+        # plots directory for this experiment
+        dir_plt = (f"{self.p.dir_plots}/"
+                   f"{self.p.experiment_id}")
+
+        if not path.isdir(dir_plt):
+            print(f"Directory {dir_plt} does not exist")
+
+            try:
+                makedirs(dir_plt)
+                if self.p.verbose:
+                    print("Directory ", dir_plt,  " Created ")
+            except FileExistsError:
+                # directory already exists
+                pass
+ 

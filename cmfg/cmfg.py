@@ -239,22 +239,23 @@ class Correlation:
 
         Sa_lbl = ['1', '2']
         Sb_lbl = ['3', '4']
-        Sc_lbl = ['5', '6', '7', '8']
+        Sc_lbl = ['5', '6']
         Sd_lbl = ['7', '8']
-        E_lbl = ['-7','-6','-5','-4','-3','-2','-1']
-        Sno_lbl = ['10', '11', '12', '15', '16', '19', '20']
+        E_lbl = ['-7','-6','-5']
+        Sno_lbl = ['10', '11', '12', '15', '16', '19', '20', '98']
         Gtypes = []
         for s in gtypes:
             opt = s.lower()
             if 'spiral' in opt or 'late' in opt:
                 opt = 'abcd'
-            if ('a' in opt or 'sa' in opt) and not 'early' in opt:
+            noellipt = (not 'early' in opt) and (not 'elliptical' in opt)
+            if ('a' in opt or 'sa' in opt) and noellipt:
                 Gtypes = sum([Gtypes, Sa_lbl], [])
-            if 'b' in opt or 'sb' in opt:
+            if ('b' in opt or 'sb' in opt) and noellipt:
                 Gtypes = sum([Gtypes, Sb_lbl], [])
-            if 'c' in opt or 'sc' in opt:
+            if ('c' in opt or 'sc' in opt) and noellipt:
                 Gtypes = sum([Gtypes, Sc_lbl], [])
-            if 'd' in opt or 'sd' in opt:
+            if ('d' in opt or 'sd' in opt) and noellipt:
                 Gtypes = sum([Gtypes, Sd_lbl], [])
 
         for s in gtypes:
@@ -336,6 +337,15 @@ class Correlation:
             rotate_pa = R.from_euler('zyz', [-phi, -theta, pa])
         else:
             rotate_pa = R.from_euler('zy', [-phi, -theta])
+
+        # AGREGAR METODO MONTECARLO PARA CALCULAR EL PERFIL LEJOS
+        # por ejemplo, si en tamaño angular es mas que X valor, 
+        # dividirlo en dos partes, o sea dos querydiscs.
+        # al mas interno hacerlo full, y al externo hacerlo MC.
+        #
+        #from random import sample
+        #listpixs = sample(listpixs)
+        #for ipix in listpixs:
 
         listpixs = hp.query_disc(skymap.nside, vector, rmax,
                                  inclusive=False, fact=4, nest=False)

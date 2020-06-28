@@ -9,6 +9,25 @@ import numpy as np
 import pickle
 import math as m
 
+def rebin(A, R, T):
+
+    sx, sy = A.shape
+
+    i = 0
+    for r, t in zip(R, T):
+
+        j = 0
+        while j < sy:
+            A[i:(i+r+1), j:(j+t+1)] = np.sum(A[i:(i+r+1), j:(j+t+1)])
+            j = j + t
+
+        i = i + r
+        Ar = A
+        return Ar
+
+    return Ar
+
+
 # plots
 from pylab import*
 from mpl_toolkits.mplot3d import Axes3D
@@ -45,8 +64,16 @@ for h in H:
 Kt = np.zeros([config.p.r_n_bins, config.p.theta_n_bins])
 for k in K:
     Kt = Kt + k
+
+# profile: las galaxias mas grandes pesan mas
 profile = Ht.sum(axis=1) / np.maximum(Kt.sum(axis=1), 1)
  
+# profile: las galaxias mas grandes pesan mas
+
+P = H / K
+profile = P.sum(axis=1)
+
+
 t = np.linspace(config.p.theta_start, config.p.theta_stop, 
                 config.p.theta_n_bins + 1)
 tmean = (t[1:] + t[:-1])/2

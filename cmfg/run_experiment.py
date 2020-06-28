@@ -24,8 +24,6 @@ res = X.run()
 
 H, K = res
 
-fout = f"R_{config.p.experiment_id}.pk"
+fout = (f"{config.p.dir_output}{config.p.experiment_id}"
+           f"/R_{config.p.experiment_id}.pk")
 pickle.dump(res, open(fout, 'wb'))
-
- 
-

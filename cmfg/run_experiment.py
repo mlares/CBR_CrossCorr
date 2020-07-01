@@ -17,7 +17,6 @@ X.load_centers()
 X.select_subsample_centers()
 
 print(f"Number of centers in subsample: {X.centers.shape[0]}")
-exit()
 
 X.load_tracers()
 res = X.run()

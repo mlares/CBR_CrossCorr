@@ -11,6 +11,10 @@ print(wb.sheetnames)
 
 first_column = 'A'
 last_column = 'O'
+
+first_row = 2
+last_row = 26
+
 col_range = f"{first_column}:{last_column}"
 
 suite = wb['SAYSHELL']
@@ -30,7 +34,7 @@ parset = namedtuple('pars', nms)
 
 
 source_dir = './'
-template_file = 'config_template.ini'
+template_file = 'SYSH_config_template.ini'
 templateLoader = jinja2.FileSystemLoader(searchpath=source_dir)
 
 latex_jinja_env = jinja2.Environment(
@@ -50,7 +54,7 @@ template_intro = latex_jinja_env.get_template(template_file)
 
 
 k = 0
-for row in suite.iter_rows(min_row=2, max_row=9):
+for row in suite.iter_rows(min_row=first_row, max_row=last_row):
     r = []
     k += 1
     for cell in row:

@@ -7,7 +7,7 @@ import healpy as hp
 import numpy as np
 from math import atan2, pi, acos
 from tqdm import tqdm
-from random import random
+from random import random, sample
 from astropy import units as u
 from sys import exit
 
@@ -338,52 +338,91 @@ class Correlation:
         else:
             rotate_pa = R.from_euler('zy', [-phi, -theta])
 
-        # AGREGAR METODO MONTECARLO PARA CALCULAR EL PERFIL LEJOS
-        # por ejemplo, si en tamaño angular es mas que X valor, 
-        # dividirlo en dos partes, o sea dos querydiscs.
-        # al mas interno hacerlo full, y al externo hacerlo MC.
-        #
-        #from random import sample
-        #listpixs = sample(listpixs)
-        #for ipix in listpixs:
+        Ht = np.zeros(Ht.shape[0])
+        Kt = np.zeros(Ht.shape[0])
 
-        listpixs = hp.query_disc(skymap.nside, vector, rmax,
-                                 inclusive=False, fact=4, nest=False)
-        dists = []
-        thetas = []
-        temps = []
+########################################
 
-        for ipix in listpixs:
+        imaxs = [self.config.p.r_n_bins]
+        rmaxs = [rmax]
+        print('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa ')
+        print(imaxs)
+        print(rmaxs)
 
-            if not self.mask[ipix]:
-                continue
+        p = self.config.p
+        imaxs = p.r_avg_cuts
 
-            v = hp.pix2vec(skymap.nside, ipix)
-            w = rotate_pa.apply(v)
+        rmaxs = []
+        for i in imaxs:
+            r = i / p.r_n_bins * rmax
+            print('..........', i, p.r_n_bins, rmax, r)
+            rmaxs.append(r)
 
-            """Angular distance
-            each center is in position [0,0,1] wrt the new system.
-            Normalization is made if required from configuration file"""
-            dist = hp.rotator.angdist(w, [0, 0, 1])
-            dist = dist * norm_factor
+        print('RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR ')
+        print(bins2d)
+        print(imaxs)
+        print(rmaxs)
 
-            """Position angle
-            the angle wrt the galaxy disk (given by the position angle
-            results from the projection of the new axes X (i.e. w[0])
-            and Y (i.e. w[1])"""
-            theta = atan2(w[1], w[0])
-            if theta < 0:
-                theta = theta + 2*pi
+        exit()
 
-            temps.append(skymap.data[ipix])
-            dists.append(dist[0])
-            thetas.append(theta)
 
-        H = np.histogram2d(dists, thetas, bins=bins2d,
-                           weights=temps, density=False)
-        K = np.histogram2d(dists, thetas, bins=bins2d, density=False)
 
-        return H[0], K[0]
+        factor = 1.
+        listp_prev = []
+
+        for ir, rmx in zip(imaxs, rmaxs):
+
+            listp_now = hp.query_disc(skymap.nside, vector, rmx,
+                                  inclusive=False, fact=4, nest=False)
+
+            listpixs = list(set(listp_now) - set(listp_prev))
+
+            Npixs = len(listpixs)
+            rf = rmx / rmaxs[0] * factor
+            Nin = int(Npixs*rf)
+
+            print(Nin, len(listpixs))
+
+            listpixs = sample(listpixs, Nin)
+
+            dists = []
+            thetas = []
+            temps = []
+
+            for ipix in listpixs:
+
+                if not self.mask[ipix]:
+                    continue
+
+                v = hp.pix2vec(skymap.nside, ipix)
+                w = rotate_pa.apply(v)
+
+                """Angular distance
+                each center is in position [0,0,1] wrt the new system.
+                Normalization is made if required from configuration file"""
+                dist = hp.rotator.angdist(w, [0, 0, 1])
+                dist = dist * norm_factor
+
+                """Position angle
+                the angle wrt the galaxy disk (given by the position angle
+                results from the projection of the new axes X (i.e. w[0])
+                and Y (i.e. w[1])"""
+                theta = atan2(w[1], w[0])
+                if theta < 0:
+                    theta = theta + 2*pi
+
+                temps.append(skymap.data[ipix])
+                dists.append(dist[0])
+                thetas.append(theta)
+
+            H = np.histogram2d(dists, thetas, bins=bins2d,
+                               weights=temps, density=False)
+            K = np.histogram2d(dists, thetas, bins=bins2d, density=False)
+
+            #Ht = Ht + H[0]
+            #Kt = Kt + K[0]
+
+        return Ht, Kt
 
     def run(self, parallel=None, njobs=1):
         """Compute (stacked) temperature map in CMB data around centers.

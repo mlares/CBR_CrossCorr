@@ -7,7 +7,7 @@ import sys
 from tqdm import tqdm
 from astropy import units as u
 
-DEFAULT_INI = 'set_experiment.ini'
+DEFAULT_INI = '../set/set_experiment.ini'
  
 def is_number(string):
     try:
@@ -57,7 +57,7 @@ class Parser(ConfigParser):
         """
         super().__init__()
         self.message = None
-        self.check_file(argv)
+        self.check_file(argv) 
         self.read_config_file()
 
         self.load_filenames()
@@ -150,7 +150,7 @@ class Parser(ConfigParser):
             list of filenames
         """
         from collections import namedtuple
-                  
+
         experiment_id = self['experiment']['experiment_ID']
         datadir_cmb = self['cmb']['datadir_cmb']
         filedata_cmb_mapa = self['cmb']['filedata_cmb_mapa']
@@ -360,6 +360,15 @@ class Parser(ConfigParser):
         ellipt_min = float(self['run']['ellipt_min'])
         ellipt_max = float(self['run']['ellipt_max'])
 
+
+        r_avg_cuts = self['run']['r_avg_cuts'].split(' ')
+        if isinstance(r_avg_cuts, str):
+            r_avg_cuts = r_n_bins
+        else:
+            r_avg_cuts = [int(i) for i in r_avg_cuts]
+        r_avg_fact = float(self['run']['r_avg_fact'])
+
+
         names = ['experiment_id',
                  'n_jobs',
                  'control_sample',
@@ -369,6 +378,8 @@ class Parser(ConfigParser):
                  'r_stop',
                  'r_n_bins',
                  'r_units',
+                 'r_avg_cuts',
+                 'r_avg_fact',
                  'theta_start',
                  'theta_stop',
                  'theta_n_bins',
@@ -402,6 +413,8 @@ class Parser(ConfigParser):
                      r_stop,
                      r_n_bins,
                      r_units,
+                     r_avg_cuts,
+                     r_avg_fact,
                      theta_start,
                      theta_stop,
                      theta_n_bins,

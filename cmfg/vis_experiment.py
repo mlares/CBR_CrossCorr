@@ -317,7 +317,7 @@ fig.savefig(fout)
 TO DO:
 
 - barras de error
-- sumar bines para los chicos (adaptative binning)
+- sumar bines para los chicos (adaptative binning)  DONE
 - smooth matrix
 - lista de settings
 

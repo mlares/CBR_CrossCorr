@@ -61,7 +61,7 @@ from matplotlib import ticker
 if len(argv) > 1:
     config = Parser(argv[1])
 else:
-    config = Parser('../set/config_SYSH_020.ini')
+    config = Parser('../set/config_SYSH_027.ini')
 
 f_input = (f"{config.p.dir_output}{config.p.experiment_id}"
            f"/R_{config.p.experiment_id}.pk")
@@ -81,14 +81,22 @@ for k in K:
 # profile: las galaxias mas grandes pesan mas
 profile = Ht / np.maximum(Kt, 1)
 
+
+# promedio de los perfiles (todas las galaxias pesan igual)
+prof_avg = profile.sum(axis=1)
+
+# perfil promedio del stacking
+prof_tot = Ht.sum(axis=1) / np.maximum(Kt.sum(axis=1), 1)
+
+
 h = profile.transpose()
 #h = H[0].transpose()
 
 R = [8, 8, 8, 8, 16, 16]
-T = [8, 8, 8, 8, 8, 8]
-J = [4]*6
+T = [8, 8, 4, 2, 2, 1]
+J = [0, 0, 0, 0, 0, 0]
 
-A = rebin(h, R, T, tstart=J, cyclic=True)
+A = rebin(h, R, T, tstart=J, cyclic=False)
 
 
 fig = plt.figure()
@@ -114,7 +122,7 @@ azs = azs.value
 azs = azs - (azs[1]-azs[0])/2
 r, th = np.meshgrid(rad, azm.value)
 
-fig = plt.figure()
+fig = plt.figure(figsize=(8,5))
 ax1 = fig.add_subplot(221, projection='polar')
 ax1.pcolormesh(th, r, h, cmap=Mycmap,
                  linestyle='None')
@@ -123,4 +131,92 @@ ax2 = fig.add_subplot(222, projection='polar')
 ax2.pcolormesh(th, r, A, cmap=Mycmap,
                  linestyle='None')
 fig.savefig('plot_002.png')
+plt.close()
+
+
+ 
+fig = plt.figure(figsize=(6,6))
+ax = fig.add_subplot(projection='polar')
+ax.pcolormesh(th, r, h, cmap=Mycmap, linestyle='None')
+fig.savefig('plot_003.png')
+plt.close()
+
+
+fig = plt.figure(figsize=(6,6))
+ax = fig.add_subplot(projection='polar')
+ax.pcolormesh(th, r, A, cmap=Mycmap, linestyle='None')
+fig.savefig('plot_004.png')
+plt.close()
+
+
+
+
+
+
+
+Ht = np.zeros([config.p.r_n_bins, config.p.theta_n_bins])
+for h in H:
+    Ht = Ht + h
+Kt = np.zeros([config.p.r_n_bins, config.p.theta_n_bins])
+for k in K:
+    Kt = Kt + k
+
+# promedio de los perfiles (todas las galaxias pesan igual)
+profile = Ht / np.maximum(Kt, 1)
+prof_avg = profile.mean(axis=1)
+# perfil promedio del stacking
+prof_tot = Ht.sum(axis=1) / np.maximum(Kt.sum(axis=1), 1)
+ 
+fig = plt.figure(figsize=(6,6))
+ax = fig.add_subplot()
+ax.plot(rads, prof_avg, label='averaged weighted profile')
+ax.plot(rads, prof_tot, label='averaged stacked profile')
+ax.legend()
+fig.savefig('plot_005.png')
+plt.close()
+
+
+ 
+
+# REBIN
+
+Nrb = 5
+N = config.p.r_n_bins
+k = N // Nrb
+P = prof_avg
+pp = []
+rr = []
+for i in range(k):
+    ii = Nrb*i
+    pp.append(P[ii:(ii+Nrb)].mean())
+    rr.append(rads[ii:(ii+Nrb)].mean())
+ 
+fig = plt.figure(figsize=(6,6))
+ax = fig.add_subplot()
+
+ax.plot(rads, prof_avg, label='averaged weighted profile')
+ax.plot(rr, pp)
+
+ax.plot(rads, prof_tot, label='averaged stacked profile')
+
+
+ax.legend(loc='lower right')
+fig.savefig('plot_006.png')
+plt.close()
+     
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

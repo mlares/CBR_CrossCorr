@@ -338,37 +338,16 @@ class Correlation:
         else:
             rotate_pa = R.from_euler('zy', [-phi, -theta])
 
-        Ht = np.zeros(Ht.shape[0])
-        Kt = np.zeros(Ht.shape[0])
-
-########################################
-
-        imaxs = [self.config.p.r_n_bins]
-        rmaxs = [rmax]
-        print('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa ')
-        print(imaxs)
-        print(rmaxs)
-
+        # -- annuli for montecarlo estimations of the mean temperature
         p = self.config.p
         imaxs = p.r_avg_cuts
-
         rmaxs = []
         for i in imaxs:
             r = i / p.r_n_bins * rmax
-            print('..........', i, p.r_n_bins, rmax, r)
             rmaxs.append(r)
-
-        print('RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR ')
-        print(bins2d)
-        print(imaxs)
-        print(rmaxs)
-
-        exit()
-
-
-
-        factor = 1.
+        factor = 1. #p.r_avg_fact
         listp_prev = []
+        # --
 
         for ir, rmx in zip(imaxs, rmaxs):
 
@@ -378,10 +357,8 @@ class Correlation:
             listpixs = list(set(listp_now) - set(listp_prev))
 
             Npixs = len(listpixs)
-            rf = rmx / rmaxs[0] * factor
+            rf = rmaxs[0] / rmx * factor
             Nin = int(Npixs*rf)
-
-            print(Nin, len(listpixs))
 
             listpixs = sample(listpixs, Nin)
 
@@ -414,13 +391,14 @@ class Correlation:
                 temps.append(skymap.data[ipix])
                 dists.append(dist[0])
                 thetas.append(theta)
+            factor = p.r_avg_fact
 
             H = np.histogram2d(dists, thetas, bins=bins2d,
                                weights=temps, density=False)
             K = np.histogram2d(dists, thetas, bins=bins2d, density=False)
-
-            #Ht = Ht + H[0]
-            #Kt = Kt + K[0]
+ 
+            Ht = Ht + H[0]
+            Kt = Kt + K[0]
 
         return Ht, Kt
 

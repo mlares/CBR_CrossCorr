@@ -362,10 +362,12 @@ class Parser(ConfigParser):
 
 
         r_avg_cuts = self['run']['r_avg_cuts'].split(' ')
-        if isinstance(r_avg_cuts, str):
-            r_avg_cuts = r_n_bins
-        else:
+        if is_number(r_avg_cuts[0]):
             r_avg_cuts = [int(i) for i in r_avg_cuts]
+            r_avg_cuts = [i if i<r_n_bins else r_n_bins for i in r_avg_cuts]
+        else:
+            r_avg_cuts = [r_n_bins]
+
         r_avg_fact = float(self['run']['r_avg_fact'])
 
 

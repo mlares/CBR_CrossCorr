@@ -25,9 +25,12 @@ def choice_yn(string, default_choice=None):
         if isinstance(default_choice, bool):
             choice = default_choice
         else:
-            raise AttributeError('dfasf')
+            raise AttributeError('Check Y/N choice')
     return choice
 
+def is_iterable(obj):
+    from collections.abc import Iterable
+    return isinstance(obj, Iterable)
 
 # Idea: change named tuple by class:
 # class parameters:
@@ -253,8 +256,12 @@ class Parser(ConfigParser):
         choice = self['glx']['control_angles']
         control_angles = choice_yn(choice, default_choice=False)
 
+        control_n_samples = int(self['glx']['control_n_samples'])
+
         norm_to = False
         r_units_str = self['run']['r_units'].lower()
+        if r_units_str == 'rad':
+            r_units = u.rad
         if r_units_str == 'arcmin':
             r_units = u.arcmin
         elif r_units_str == 'arcsec':
@@ -331,7 +338,6 @@ class Parser(ConfigParser):
             exit()
         theta_stop = theta_stop*theta_units
 
-
         choice = self['run']['disk_align']
         disk_align = choice_yn(choice, default_choice=False)
  
@@ -360,20 +366,129 @@ class Parser(ConfigParser):
         ellipt_min = float(self['run']['ellipt_min'])
         ellipt_max = float(self['run']['ellipt_max'])
 
-
         r_avg_cuts = self['run']['r_avg_cuts'].split(' ')
         if is_number(r_avg_cuts[0]):
             r_avg_cuts = [int(i) for i in r_avg_cuts]
             r_avg_cuts = [i if i<r_n_bins else r_n_bins for i in r_avg_cuts]
         else:
             r_avg_cuts = [r_n_bins]
+        if r_avg_cuts[-1]<r_n_bins:
+            r_avg_cuts.append(r_n_bins)
 
         r_avg_fact = float(self['run']['r_avg_fact'])
 
+        for key in self['run']:
+            if key=='glx_angsize_min':
+                if is_number(self['run']['glx_angsize_min']):
+                    glx_angsize_min = float(self['run']['glx_angsize_min'])
+                else:
+                    glx_angsize_min = 0.
+            else:
+                glx_angsize_min = 1.e9
+
+        for key in self['run']:
+            if key=='glx_angsize_max':
+                if is_number(self['run']['glx_angsize_max']):
+                    glx_angsize_max = float(self['run']['glx_angsize_max'])
+                else:
+                    glx_angsize_max = 1.e9
+            else:
+                glx_angsize_max = 1.e9
+
+        p_unit = None
+        for key in self['run']:
+            if key=='glx_angsize_unit':
+                unit = self['run']['glx_angsize_unit'].lower()
+                if unit == 'rad':
+                    p_unit = u.rad
+                elif unit == 'arcmin':
+                    p_unit = u.arcmin
+                elif unit == 'arcsec':
+                    p_unit = u.arcsec
+                elif unit.lower() in 'nofalse':
+                    p_unit = None
+                else:
+                    print('glx_angsize_unit not valid in config file'
+                          '\nIgnoring filtering on angscal galaxy size.')
+                    p_unit = None
+        glx_angsize_unit = p_unit
+
+        glx_physize_min = 0.
+        for key in self['run']:
+            if key=='glx_physize_min':
+                if is_number(self['run']['glx_physize_min']):
+                    glx_physize_min = float(self['run']['glx_physize_min'])
+                else:
+                    glx_physize_min = 0.
+
+        glx_physize_max = 1.e9
+        for key in self['run']:
+            if key=='glx_physize_max':
+                if is_number(self['run']['glx_physize_max']):
+                    glx_physize_max = float(self['run']['glx_physize_max'])
+                else:
+                    glx_physize_max = 1.e9
+
+        p_unit = None
+        for key in self['run']:
+            if key=='glx_physize_unit':
+                unit = self['run']['glx_physize_unit'].lower()
+                if unit == 'Mpc':
+                    p_unit = u.Mpc
+                elif unit == 'kpc':
+                    p_unit = u.kpc
+                elif unit == 'parsec':
+                    p_unit = u.parsec
+                elif unit.lower() in 'nofalse':
+                    p_unit = None
+                else:
+                    print('glx_physize_unit not valid in config file'
+                          '\nIgnoring filtering on physcal galaxy size.')
+                    p_unit = None
+        glx_physize_unit = p_unit
+
+        if adaptative_resolution:
+            optimize = 'repix'
+        elif len(r_avg_cuts)>1:
+            optimize = 'manual'
+        else:
+            optimize = False
+
+        # (if no adaptative_res_nside is set, default is no # optimization)
+        adaptative_res_nside = int(self['cmb']['filedata_cmb_nside'])
+        for key in self['run']:
+            if key=='adaptative_res_nside':
+                adaptative_res_nside = int(self['run']['adaptative_res_nside'])
+
+
+        
+
+        choice = self['run']['adaptative_res_dilut']
+        if is_iterable(choice):
+            dilut_pars = self['run']['adaptative_res_dilut'].split(' ')
+            if len(dilut_pars)==1:
+                dilute_A = dilut_pars[0]
+            elif len(dilut_pars)==2:
+                dilute_A, dilute_B = dilut_pars
+            elif len(dilut_pars)==3:
+                dilute_A, dilute_B, dilute_C = dilut_pars
+            else:
+                dilute_A = 0.9
+                dilute_B = 8
+                dilute_C = 15
+        else:
+            if is_number(choice):
+                dilute_A = choice
+                dilute_B = 8
+                dilute_C = 15
+        dilute_A = float(dilute_A)
+        dilute_B = float(dilute_B)
+        dilute_C = float(dilute_C)
 
         names = ['experiment_id',
                  'n_jobs',
                  'control_sample',
+                 'control_n_samples',
                  'control_ranmap',
                  'control_angles',
                  'r_start',
@@ -388,19 +503,30 @@ class Parser(ConfigParser):
                  'theta_units',
                  'norm_to',
                  'adaptative_resolution',
+                 'adaptative_res_nside',
+                 'dilute_A',
+                 'dilute_B',
+                 'dilute_C',
                  'disk_align',
                  'galaxy_types',
                  'redshift_min',
                  'redshift_max',
                  'ellipt_min',
                  'ellipt_max',
+                 'glx_angsize_min',
+                 'glx_angsize_max',
+                 'glx_angsize_unit',
+                 'glx_physize_min',
+                 'glx_physize_max',
+                 'glx_physize_unit',
                  'max_centers',
                  'verbose',
                  'run_parallel',
                  'showp',
                  'overwrite',
                  'dir_output',
-                 'dir_plots']
+                 'dir_plots',
+                 'optimize']
 
         names = ' '.join(names)
 
@@ -409,6 +535,7 @@ class Parser(ConfigParser):
         res = parset(experiment_id,
                      n_jobs,
                      control_sample,
+                     control_n_samples,
                      control_ranmap,
                      control_angles,
                      r_start,
@@ -423,19 +550,30 @@ class Parser(ConfigParser):
                      theta_units,
                      norm_to,
                      adaptative_resolution,
+                     adaptative_res_nside,
+                     dilute_A,
+                     dilute_B,
+                     dilute_C,
                      disk_align,
                      galaxy_types,
                      redshift_min,
                      redshift_max,
                      ellipt_min,
                      ellipt_max,
+                     glx_angsize_min,
+                     glx_angsize_max,
+                     glx_angsize_unit,
+                     glx_physize_min,
+                     glx_physize_max,
+                     glx_physize_unit,
                      max_centers,
                      verbose,
                      run_parallel,
                      showp,
                      overwrite,
                      dir_output,
-                     dir_plots)
+                     dir_plots,
+                     optimize)
 
         self.p = res
 
@@ -513,4 +651,3 @@ class Parser(ConfigParser):
             except FileExistsError:
                 # directory already exists
                 pass
- 

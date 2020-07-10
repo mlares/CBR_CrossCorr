@@ -68,25 +68,72 @@ class SkyMap():
 class PixelTools:
     #{{{
     
-    def spread_pixels(self, Nside_low, Nside_high, ID):
+    def spread_pixels(self, Nside_low, Nside_high, ID, order='nest'):
         #{{{
         """
         returns a list of pixel IDs in the Nside_high resolution
         from a pixel ID in the Nside_low resolution.
         """
-
         from math import log
+        import numpy as np
+        import healpy as hp
+
+        if order != 'nest' and order != 'ring':
+            raise KeyError('ERROR: check order in spread_pixels')
+
+        if Nside_low == Nside_high:
+            if isinstance(ID, list):
+                return ID
+            else:
+                return [ID]
+
+        if Nside_low > Nside_high:
+            raise KeyError('ERROR using spread_pixels')
+
         Llow = int(log(Nside_low, 2))
         Lhigh = int(log(Nside_high, 2))
 
-        print(Llow, Lhigh)
-        b = bin(ID)
-        DN = Lhigh-Llow
-        a = [bin(i)[2:].zfill(2*DN) for i in range(4**DN)]
-        pix_IDs = []
-        for i in a:
-            x = (b[2:].zfill(Llow) + i)
-            pix_IDs.append(int(x, 2))
+        if isinstance(ID, list) or isinstance(ID, np.ndarray):
+            
+            pixids = []
+            if order == 'ring':
+                for ipix in ID:
+                    j = hp.ring2nest(Nside_low, ipix)
+                    pixids.append(j)
+            else:
+                pixids = ID
+
+            pix_IDs = []
+            for id in pixids:
+                b = bin(id)
+                DN = Lhigh-Llow
+                a = [bin(i)[2:].zfill(2*DN) for i in range(4**DN)]
+                for i in a:
+                    x = (b[2:].zfill(Llow) + i)
+                    pix_IDs.append(int(x, 2))
+             
+        elif isinstance(ID, int) or isinstance(ID, np.int64):
+
+            if order == 'ring':
+                pixids = hp.ring2nest(Nside_low, ID)
+            else:
+                pixids = ID
+
+            b = bin(pixids)
+            DN = Lhigh-Llow
+            a = [bin(i)[2:].zfill(2*DN) for i in range(4**DN)]
+            pix_IDs = []
+            for i in a:
+                x = (b[2:].zfill(Llow) + i)
+                pix_IDs.append(int(x, 2))
+        else:
+            print('wtf')
+            pix_IDs = 0
+
+        if order == 'ring':
+            for i in range(len(pix_IDs)):
+                pix_IDs[i] = hp.nest2ring(Nside_high, pix_IDs[i])
+
         return(pix_IDs)
         #}}}
 

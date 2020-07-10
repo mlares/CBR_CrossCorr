@@ -20,9 +20,9 @@ print(f"Number of centers in subsample: {X.centers.shape[0]}")
 
 X.load_tracers()
 res = X.run()
-
 H, K = res
 
 fout = (f"{config.p.dir_output}{config.p.experiment_id}"
            f"/R_{config.p.experiment_id}.pk")
 pickle.dump(res, open(fout, 'wb'))
+

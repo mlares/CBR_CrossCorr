@@ -9,6 +9,7 @@ from math import atan2, pi, acos
 from tqdm import tqdm
 from random import random, sample
 from astropy import units as u
+import pickle
 from sys import exit
 
 pipeline_check = 0
@@ -260,13 +261,10 @@ class Correlation:
 
         for s in gtypes:
             opt = s.lower()
-            print(opt)
-
             if 'ellipt' in opt or 'early' in opt:
                 opt = 'e'
             if 'e' in opt:
                 Gtypes = sum([Gtypes, E_lbl], [])
-        print(Gtypes)
 
         filt1 = []
         for t in self.centers['type']:
@@ -282,7 +280,6 @@ class Correlation:
         for z in self.centers['v']:
             f = z > zmin and z < zmax
             filt2.append(f)
-
         
         # filter on: elliptical isophotal orientation -----
         boamin = self.config.p.ellipt_min
@@ -292,7 +289,24 @@ class Correlation:
             f = boa > boamin and boa < boamax
             filt3.append(f)
 
-        filt = np.logical_and.reduce((filt1, filt2, filt3))
+        # filter on: galaxy size ----------------
+        filt4 = []
+        if self.config.p.glx_angsize_unit is not None:
+            smin = self.config.p.glx_angsize_min
+            smax = self.config.p.glx_angsize_max
+            for glxsize in self.centers['glx_size_rad']:
+                f = glxsize > smin and glxsize < smax
+                filt4.append(f)
+
+        if self.config.p.glx_physize_unit is not None:
+            smin = self.config.p.glx_physize_min
+            smax = self.config.p.glx_physize_max
+            for glxsize in self.centers['glx_size_kpc']:
+                f = glxsize > smin and glxsize < smax
+                filt4.append(f)
+
+        # filter all ----------------------------
+        filt = np.logical_and.reduce((filt1, filt2, filt3, filt4))
         self.centers = self.centers[filt]
 
         # limit the number of centers
@@ -311,6 +325,190 @@ class Correlation:
 
     def run_single(self, center):
         """Compute the temperature in CMB data around a center.
+
+        This works as a wrapper for the functions
+        run_single_montecarlo and run_single_repix.
+
+        Parameters
+        ----------
+        center : list or array
+            List of centers
+
+        Returns
+        -------
+        H : array like
+            Cross product of temperatures
+        K : array like
+            Counts of pairs contributing to each bin
+        """
+
+        if self.config.p.optimize=='repix':
+            # Optimize using low resolution pixels
+            Ht, Kt = self.run_single_repix(center)
+        elif self.config.p.optimize=='manual':
+            # Optimize using manual dilution
+            Ht, Kt = self.run_single_montecarlo(center)
+        else:
+            # run without optimization
+            skymap = self.map
+            res = self.initialize_counters(center[1])
+            bins2d, rmax, Ht, Kt, norm_factor = res
+
+            # compute rotation matrix
+            phi = float(center[1].phi)
+            theta = float(center[1].theta)
+            pa = float(center[1].pa)
+
+            vector = hp.ang2vec(center[1].theta, center[1].phi)
+            if self.config.p.disk_align:
+                rotate_pa = R.from_euler('zyz', [-phi, -theta, pa])
+            else:
+                rotate_pa = R.from_euler('zy', [-phi, -theta])
+
+            listpixs = hp.query_disc(skymap.nside, vector, rmax,
+                                  inclusive=False, fact=4, nest=False)
+            dists = []
+            thetas = []
+            temps = []
+
+            for ipix in listpixs:
+
+                if not self.mask[ipix]:
+                    continue
+
+                v = hp.pix2vec(skymap.nside, ipix)
+                w = rotate_pa.apply(v)
+
+                """Angular distance
+                each center is in position [0,0,1] wrt the new system.
+                Normalization is made if required from configuration file"""
+                dist = hp.rotator.angdist(w, [0, 0, 1])
+                dist = dist * norm_factor
+
+                """Position angle
+                the angle wrt the galaxy disk (given by the position angle
+                results from the projection of the new axes X (i.e. w[0])
+                and Y (i.e. w[1])"""
+                theta = atan2(w[1], w[0])
+                if theta < 0:
+                    theta = theta + 2*pi
+
+                temps.append(skymap.data[ipix])
+                dists.append(dist[0])
+                thetas.append(theta)
+
+            H = np.histogram2d(dists, thetas, bins=bins2d,
+                               weights=temps, density=False)
+            K = np.histogram2d(dists, thetas, bins=bins2d, density=False)
+ 
+            Ht = Ht + H[0]
+            Kt = Kt + K[0]
+
+        return Ht, Kt
+
+    def run_single_repix(self, center):
+        """Compute the temperature in CMB data around a center.
+
+        This version is optimized with two levels of pixelization
+        resolution.
+
+        Parameters
+        ----------
+        center : list or array
+            List of centers
+
+        Returns
+        -------
+        H : array like
+            Cross product of temperatures
+        K : array like
+            Counts of pairs contributing to each bin
+        """
+        from PixelSky import PixelTools
+
+        skymap = self.map
+        bins2d, rmax, Ht, Kt, norm_factor = self.initialize_counters(center[1])
+
+        # compute rotation matrix
+        phi = float(center[1].phi)
+        theta = float(center[1].theta)
+        pa = float(center[1].pa)
+
+        A = self.config.p.dilute_A
+        B = self.config.p.dilute_B
+        C = self.config.p.dilute_C
+
+        vector = hp.ang2vec(center[1].theta, center[1].phi)
+        if self.config.p.disk_align:
+            rotate_pa = R.from_euler('zyz', [-phi, -theta, pa])
+        else:
+            rotate_pa = R.from_euler('zy', [-phi, -theta])
+
+        nside_lowres = self.config.p.adaptative_res_nside
+        listp_coarse = hp.query_disc(nside_lowres, vector, rmax,
+                                     inclusive=False, fact=4, nest=False)
+        px = PixelTools()
+        lps_hires = px.spread_pixels(nside_lowres, skymap.nside,
+                                     listp_coarse, order='ring')  
+
+        listpixs = []
+        for pix_lowres_id in listp_coarse:
+
+            # compute distance to center
+            v = hp.pix2vec(nside_lowres, pix_lowres_id)
+            w = rotate_pa.apply(v)
+            dist = hp.rotator.angdist(w, [0, 0, 1]) 
+
+            # compute dilution factor
+            dilute = 1 - A*np.exp(-B*np.exp(-C*dist))
+
+            # compute the number of pixels in high resolution
+            lps_hires = px.spread_pixels(nside_lowres, skymap.nside,
+                                         pix_lowres_id, order='ring')  
+            Nsub = len(lps_hires)
+
+            # dilute pixels for montecarlo estimation (based on pixels)
+            Nin = int(len(lps_hires)*dilute)
+            lps_sample = sample(lps_hires, Nin)
+            for k in lps_sample:
+                listpixs.append(k)
+
+        dists = []
+        thetas = []
+        temps = []
+
+        for ipix in listpixs:
+
+            if not self.mask[ipix]:
+                continue
+
+            v = hp.pix2vec(skymap.nside, ipix)
+            w = rotate_pa.apply(v)
+            dist = hp.rotator.angdist(w, [0, 0, 1])
+
+            dist = dist * norm_factor
+            theta = atan2(w[1], w[0])
+            if theta < 0:
+                theta = theta + 2*pi
+
+            temps.append(skymap.data[ipix])
+            dists.append(dist[0])
+            thetas.append(theta)
+
+        H = np.histogram2d(dists, thetas, bins=bins2d,
+                           weights=temps, density=False)
+        K = np.histogram2d(dists, thetas, bins=bins2d, density=False)
+ 
+        Ht = Ht + H[0]
+        Kt = Kt + K[0]
+
+        return Ht, Kt
+
+    def run_single_montecarlo(self, center):
+        """Compute the temperature in CMB data around a center.
+
+        This version is optimized with a Monte Carlo estimation
+        ot the mean temperatures per radial bin.
 
         Parameters
         ----------
@@ -374,16 +572,9 @@ class Correlation:
                 v = hp.pix2vec(skymap.nside, ipix)
                 w = rotate_pa.apply(v)
 
-                """Angular distance
-                each center is in position [0,0,1] wrt the new system.
-                Normalization is made if required from configuration file"""
                 dist = hp.rotator.angdist(w, [0, 0, 1])
                 dist = dist * norm_factor
 
-                """Position angle
-                the angle wrt the galaxy disk (given by the position angle
-                results from the projection of the new axes X (i.e. w[0])
-                and Y (i.e. w[1])"""
                 theta = atan2(w[1], w[0])
                 if theta < 0:
                     theta = theta + 2*pi
@@ -426,31 +617,52 @@ class Correlation:
         if pipeline_check < 111:
             print('Functions load_centers and load_tracers are required')
             exit()
+
+        p = self.config.p
+
         if isinstance(parallel, bool):
             run_parallel = parallel
         else:
-            run_parallel = self.config.p.run_parallel
+            run_parallel = p.run_parallel
 
         if self.config.p.verbose:
             print('starting computations...')
 
-        centers = self.centers
+        # run on sample data
         if run_parallel:
             H, K = self.run_batch_II()
         else:
+            centers = self.centers
             centers_ids = range(len(centers))
             H, K = self.run_batch(centers, centers_ids)
 
-        #Ht = np.zeros([X.config.p.r_n_bins, X.config.p.theta_n_bins])
-        #Ht = [0]*len(H[0])
-        #for h in H:
-        #    Ht = Ht + h
-        #Kt = [0]*len(K[0])
-        #for h in K:
-        #    Kt = Kt + h
-        #bins2d = self.initialize_counters()[0]
-        #R = Ht / np.maximum(Kt, 1)
-        #return Ht, Kt, bins2d, R
+        # control sample
+        if p.control_sample:  
+            theta = self.centers['theta']
+            phi = self.centers['phi']
+            for i in range(p.control_n_samples):
+                N = self.centers.shape[0]
+                phi = [random()*2*pi for _ in range(N)]
+                cos_theta = [random()*2.-1. for _ in range(N)]
+                theta = [acos(r) for r in cos_theta]
+                self.centers['theta'] = theta
+                self.centers['phi'] = phi
+
+                if p.verbose:
+                    print(f"control sample {i}"
+                          f"/{self.config.p.control_n_samples}")
+
+                if run_parallel:
+                    res = self.run_batch_II()
+                else:
+                    centers = self.centers
+                    centers_ids = range(len(centers))
+                    res = self.run_batch(centers, centers_ids)
+
+                # escribir los randoms
+                fout = (f"{p.dir_output}{p.experiment_id}"
+                           f"/control_{p.experiment_id}_{i}.pk")
+                pickle.dump(res, open(fout, 'wb'))
 
         return H, K
 

@@ -48,10 +48,48 @@ N_r = config.p.r_n_bins
 N_t = config.p.theta_n_bins
 
 
+# ====================== LOAD CONTROL SAMPLE ====================
+                                                   
+control = []
+for r in range(config.p.control_n_samples):
+
+    f_input = (f"{config.p.dir_output}{config.p.experiment_id}"
+               f"/control_{config.p.experiment_id}_{r}.pk")
+    print(f_input)
+
+    with open(f_input, 'rb') as f:
+        H, K = pickle.load(f)
+
+    r_breaks, r_means, t_breaks, t_means = rt_axes(config)
+
+    res = profiles(H, K, config)
+    mean_dT_cells, prof_avg, prof_stack, prof_para, prof_perp = res
+
+    control.append(prof_avg)                                                   
 
 
 # ===================== PLOTS: PROFILE ==========================
 
+ 
+# ____________
+# perfil total y muestras de control
+
+fig = plt.figure(figsize=(8,5))
+ax = fig.add_subplot()
+
+ax.plot(r_means, prof_avg, linewidth=2, color='red')
+ax.plot(r_means, prof_stack, linewidth=2, color='red')
+for r in range(config.p.control_n_samples):
+    ax.plot(r_means, control[r], linewidth=2, color='grey')
+
+ax.set_xlabel('radial distance [glx size]')
+ax.set_ylabel('<$\Delta$T> [$\mu$K]')
+
+fout = (f"{config.filenames.dir_plots}{config.p.experiment_id}/"
+        f"{config.p.experiment_id}_p000.png")
+fig.savefig(fout)
+plt.close()                  
+     
 
 # ____________
 # perfil total y por dos regiones: perp y paralell

@@ -1,20 +1,17 @@
 import numpy as np
 from configparser import ConfigParser
-import itertools
-import pandas as pd
-import pickle
-import sys
-from tqdm import tqdm
 from astropy import units as u
 
 DEFAULT_INI = '../set/set_experiment.ini'
- 
+
+
 def is_number(string):
     try:
         float(string)
         return True
     except ValueError:
         return False
+
 
 def choice_yn(string, default_choice=None):
     if string.lower() in 'yesitrue':
@@ -27,6 +24,7 @@ def choice_yn(string, default_choice=None):
         else:
             raise AttributeError('Check Y/N choice')
     return choice
+
 
 def is_iterable(obj):
     from collections.abc import Iterable
@@ -60,7 +58,7 @@ class Parser(ConfigParser):
         """
         super().__init__()
         self.message = None
-        self.check_file(argv) 
+        self.check_file(argv)
         self.read_config_file()
 
         self.load_filenames()
@@ -86,7 +84,7 @@ class Parser(ConfigParser):
 
         mess = ("Configuration file expected:"
                 "\n\t filename or CLI input"
-                "\n\t example:  python run_correlation.py"
+                "\n\t example:  python run_experiment.py"
                 f"\n\t {DEFAULT_INI}"
                 "\n\t Using default configuration file")
         if isinstance(sys_args, str):
@@ -166,10 +164,6 @@ class Parser(ConfigParser):
         plot_name_root = self['out']['plot_name_root']
         plot_format = self['out']['plot_format']
         plot_ftype = self['out']['plot_ftype']
-        plot_fname = plot_name_root + experiment_id + '.' + plot_format
-
-
-        fname = dir_plots + plot_fname + '_' + experiment_id + plot_ftype
 
         names = 'experiment_id \
                  datadir_cmb \
@@ -233,9 +227,9 @@ class Parser(ConfigParser):
         experiment_id = self['experiment']['experiment_id']
 
         n_jobs = int(self['run']['n_jobs'])
-        
+
         adaptative_resolution = self['run']['adaptative_resolution']
-        
+
         dir_output = self['out']['dir_output']
         dir_plots = self['out']['dir_plots']
 
@@ -249,7 +243,7 @@ class Parser(ConfigParser):
 
         choice = self['glx']['control_sample']
         control_sample = choice_yn(choice, default_choice=False)
-                               
+
         choice = self['glx']['control_ranmap']
         control_ranmap = choice_yn(choice, default_choice=False)
 
@@ -275,10 +269,10 @@ class Parser(ConfigParser):
             r_units = 1.*u.dimensionless_unscaled
         elif r_units_str in ['angular']:
             norm_to = 'ANGULAR'
-            r_units = 1.*u.dimensionless_unscaled 
+            r_units = 1.*u.dimensionless_unscaled
         elif r_units_str in ['cosine']:
             norm_to = 'COS'
-            r_units = 1.*u.dimensionless_unscaled 
+            r_units = 1.*u.dimensionless_unscaled
         else:
             print('Warning: not recognized radial unit or normalization')
             r_units = 1.
@@ -300,17 +294,17 @@ class Parser(ConfigParser):
             theta_units = u.deg
         else:
             theta_units = 1.
-        theta_n_bins = int(self['run']['theta_n_bins']) 
- 
+        theta_n_bins = int(self['run']['theta_n_bins'])
+
         theta_start = self['run']['theta_start']
         if is_number(theta_start):
             theta_start = float(theta_start)
             num = 1.
         elif 'pi' in theta_start:
-            n = theta_start.replace('pi','').replace('*','')
+            n = theta_start.replace('pi', '').replace('*', '')
             try:
                 float(n)
-            except:
+            except Exception:
                 num = 1.
             else:
                 num = float(n)
@@ -318,17 +312,17 @@ class Parser(ConfigParser):
         else:
             print('Error: number not recognized in theta_start')
             exit()
-        theta_start = theta_start*theta_units                                 
+        theta_start = theta_start*theta_units
 
         theta_stop = self['run']['theta_stop']
         if is_number(theta_stop):
             theta_stop = float(theta_stop)
             num = 1.
         elif 'pi' in theta_stop:
-            n = theta_stop.replace('pi','').replace('*','')
+            n = theta_stop.replace('pi', '').replace('*', '')
             try:
                 float(n)
-            except:
+            except Exception:
                 num = 1.
             else:
                 num = float(n)
@@ -340,7 +334,7 @@ class Parser(ConfigParser):
 
         choice = self['run']['disk_align']
         disk_align = choice_yn(choice, default_choice=False)
- 
+
         choice = self['run']['adaptative_resolution']
         adaptative_resolution = choice_yn(choice, default_choice=False)
 
@@ -357,7 +351,7 @@ class Parser(ConfigParser):
         verbose = choice_yn(choice, default_choice=True)
         if verbose:
             print('loading parameters...')
- 
+
         galaxy_types = self['run']['galaxy_types']
         galaxy_types = galaxy_types.split(' ')
 
@@ -369,16 +363,16 @@ class Parser(ConfigParser):
         r_avg_cuts = self['run']['r_avg_cuts'].split(' ')
         if is_number(r_avg_cuts[0]):
             r_avg_cuts = [int(i) for i in r_avg_cuts]
-            r_avg_cuts = [i if i<r_n_bins else r_n_bins for i in r_avg_cuts]
+            r_avg_cuts = [i if i < r_n_bins else r_n_bins for i in r_avg_cuts]
         else:
             r_avg_cuts = [r_n_bins]
-        if r_avg_cuts[-1]<r_n_bins:
+        if r_avg_cuts[-1] < r_n_bins:
             r_avg_cuts.append(r_n_bins)
 
         r_avg_fact = float(self['run']['r_avg_fact'])
 
         for key in self['run']:
-            if key=='glx_angsize_min':
+            if key == 'glx_angsize_min':
                 if is_number(self['run']['glx_angsize_min']):
                     glx_angsize_min = float(self['run']['glx_angsize_min'])
                 else:
@@ -387,7 +381,7 @@ class Parser(ConfigParser):
                 glx_angsize_min = 1.e9
 
         for key in self['run']:
-            if key=='glx_angsize_max':
+            if key == 'glx_angsize_max':
                 if is_number(self['run']['glx_angsize_max']):
                     glx_angsize_max = float(self['run']['glx_angsize_max'])
                 else:
@@ -397,7 +391,7 @@ class Parser(ConfigParser):
 
         p_unit = None
         for key in self['run']:
-            if key=='glx_angsize_unit':
+            if key == 'glx_angsize_unit':
                 unit = self['run']['glx_angsize_unit'].lower()
                 if unit == 'rad':
                     p_unit = u.rad
@@ -415,7 +409,7 @@ class Parser(ConfigParser):
 
         glx_physize_min = 0.
         for key in self['run']:
-            if key=='glx_physize_min':
+            if key == 'glx_physize_min':
                 if is_number(self['run']['glx_physize_min']):
                     glx_physize_min = float(self['run']['glx_physize_min'])
                 else:
@@ -423,7 +417,7 @@ class Parser(ConfigParser):
 
         glx_physize_max = 1.e9
         for key in self['run']:
-            if key=='glx_physize_max':
+            if key == 'glx_physize_max':
                 if is_number(self['run']['glx_physize_max']):
                     glx_physize_max = float(self['run']['glx_physize_max'])
                 else:
@@ -431,7 +425,7 @@ class Parser(ConfigParser):
 
         p_unit = None
         for key in self['run']:
-            if key=='glx_physize_unit':
+            if key == 'glx_physize_unit':
                 unit = self['run']['glx_physize_unit'].lower()
                 if unit == 'Mpc':
                     p_unit = u.Mpc
@@ -449,7 +443,7 @@ class Parser(ConfigParser):
 
         if adaptative_resolution:
             optimize = 'repix'
-        elif len(r_avg_cuts)>1:
+        elif len(r_avg_cuts) > 1:
             optimize = 'manual'
         else:
             optimize = False
@@ -457,20 +451,17 @@ class Parser(ConfigParser):
         # (if no adaptative_res_nside is set, default is no # optimization)
         adaptative_res_nside = int(self['cmb']['filedata_cmb_nside'])
         for key in self['run']:
-            if key=='adaptative_res_nside':
+            if key == 'adaptative_res_nside':
                 adaptative_res_nside = int(self['run']['adaptative_res_nside'])
-
-
-        
 
         choice = self['run']['adaptative_res_dilut']
         if is_iterable(choice):
             dilut_pars = self['run']['adaptative_res_dilut'].split(' ')
-            if len(dilut_pars)==1:
+            if len(dilut_pars) == 1:
                 dilute_A = dilut_pars[0]
-            elif len(dilut_pars)==2:
+            elif len(dilut_pars) == 2:
                 dilute_A, dilute_B = dilut_pars
-            elif len(dilut_pars)==3:
+            elif len(dilut_pars) == 3:
                 dilute_A, dilute_B, dilute_C = dilut_pars
             else:
                 dilute_A = 0.9
@@ -612,18 +603,6 @@ class Parser(ConfigParser):
         else:
             msg = f"Directory {self.p.dir_output} does not exist!"
             raise NotADirectoryError(msg)
- 
-        #if path.isdir(self.p.dir_output):
-        #    print(f"Directory {self.p.dir_output} does not exist")
-
-        #    try:
-        #        makedirs(self.p.dir_output)
-        #        if self.p.verbose:
-        #            print("Directory ", self.p.dir_output,  " Created ")
-        #    except FileExistsError:
-        #        # directory already exists
-        #        pass
-
 
         # plots directory
         if not path.isdir(self.p.dir_plots):
@@ -665,4 +644,4 @@ class Parser(ConfigParser):
                 ans = True
             if not ans:
                 print("Please fix filename or experiment index and try again.")
-                exit()  
+                exit()

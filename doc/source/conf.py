@@ -16,10 +16,10 @@
 
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../../src3/'))
+sys.path.insert(0, os.path.abspath('../../cmfg/'))
 sys.path.insert(0, os.path.abspath('../../tst/'))
 
-src_paths = [ '../../src3/', '../../tst/' ]
+src_paths = [ '../../cmfg/', '../../tst/' ]
 
 # -- Project information -----------------------------------------------------
 

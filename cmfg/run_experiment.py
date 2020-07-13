@@ -3,8 +3,7 @@
 
 import cmfg
 from Parser import Parser
-from sys import argv, exit
-import numpy as np
+from sys import argv
 import pickle
 
 if len(argv) > 1:
@@ -12,7 +11,7 @@ if len(argv) > 1:
 else:
     config = Parser()
 
-X = cmfg.Correlation(config)
+X = cmfg.profile2d(config)
 X.load_centers()
 X.select_subsample_centers()
 
@@ -23,6 +22,5 @@ res = X.run()
 H, K = res
 
 fout = (f"{config.p.dir_output}{config.p.experiment_id}"
-           f"/R_{config.p.experiment_id}.pk")
+        f"/R_{config.p.experiment_id}.pk")
 pickle.dump(res, open(fout, 'wb'))
-

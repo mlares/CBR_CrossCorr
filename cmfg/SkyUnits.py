@@ -1,5 +1,4 @@
 class SkyUnits():
-    #{{{
     '''
     Transform units in the sky for a given cosmology
     '''
@@ -23,12 +22,12 @@ class SkyUnits():
 
     def ang2glxsize(self, theta, z, glxsize):
         # in development (always compute??)
-        rglxsize=1.
+        rglxsize = 1.
         return(rglxsize)
 
     def glxsize2ang(self, glxsize):
         # in development (always compute??)
-        theta=1.
+        theta = 1.
         return(theta)
 
     def glxsize2proj(self, size):
@@ -38,58 +37,42 @@ class SkyUnits():
 
     def proj2ang(self, proj):
         # in development (always compute??)
-        theta=1.
+        theta = 1.
         return(theta)
 
     def proj2glxsize(self, proj):
         # in development (always compute??)
-        rglxsize=1.
+        rglxsize = 1.
         return(rglxsize)
-    #}}}
 
-def check_file(sys_args):
-        import sys
+    def check_file(sys_args):
         from os.path import isfile
 
-        if len(sys_args) == 2:    
+        if len(sys_args) == 2:
             filename = sys_args[1]
             if isfile(filename):
                 msg = "Loading configuration parameters from {}"
-                print(msg.format(filename) )
+                print(msg.format(filename))
             else:
                 print("Input argument is not a valid file")
-                raise SystemExit(1) 
-                
+                raise SystemExit(1)
+
         else:
             print('Configuration file expected (just 1 argument)')
-            print('example:  python run_correlation.py ../set/config.ini')
-            raise SystemExit(1) 
-        
+            print('example:  python run_experiment.py ../set/config.ini')
+            raise SystemExit(1)
+
         return filename
- 
 
-# import configparser
-# #class Config(configparser.ConfigParser):
-# class Config():
-# 
-#     def __init__(self):
-#         #{{{
-#         #ConfigParser.ConfigParser.__init__(self)
-# 
-#         self.cfg = configparser.ConfigParser()
-#         #}}} 
-#  
-#     def load_config(self, sys_args):
-#         # https://stackoverflow.com/questions/3609852/which-is-the-best-way-to-allow-configuration-options-be-overridden-at-the-comman
-#         # https://docs.python.org/3/library/configparser.html
-#         # https://tomassetti.me/parsing-in-python/#tools
-
+# https://stackoverflow.com/questions/3609852/which-is-the-best-way-to
+#  -allow-configuration-options-be-overridden-at-the-comman
+# https://docs.python.org/3/library/configparser.html
+# https://tomassetti.me/parsing-in-python/#tools
 
 
 class SkyMap():
-    # {{{
     '''
-    class SkyMap: methods for computing angular correlations in the CMB
+    class SkyMap: utilities to work with pixelized maps. 
     methods:
         load: loads a CMB map
     '''
@@ -113,11 +96,12 @@ class SkyMap():
         return self.npixs
 
     def __repr__(self):
-        return 'Sky Map with {!s} pixels in {!s} order'.format(\
-            self.npixs, self.ordering)
+        string = 'Sky Map with {!s} pixels in {!s} order'
+        return string.format(self.npixs, self.ordering)
 
     def __str__(self):
-        return 'Sky Map with {!s} pixels in {!s} order'.format(\
+        string = 'Sky Map with {!s} pixels in {!s} order'
+        return string.format(
             self.npixs, self.ordering)
 
     def load(self, filename, *args, **kwargs):
@@ -133,23 +117,17 @@ class SkyMap():
             readmap: a healpix map, class ?
 
         '''
-
         import healpy as hp
 
         d = hp.read_map(filename, h=True, **kwargs)
         self.data = d[0]
         self.header = d[1]
-
         return(True)
-    
+
     def apply_mask(self, mask):
-
         import healpy as hp
-
         m = self[0].copy()
         k = mask[0].copy()
-        m[k<0.5] = hp.UNSEEN
+        m[k < 0.5] = hp.UNSEEN
         masked_map = hp.ma(m)
         return(masked_map)
-
-    # }}}

@@ -4,7 +4,7 @@
    contain the root `toctree` directive.
 
 ################################################
-Cosmic Microwave Foregrounds (CMF) documentation
+Cosmic Microwave Foregrounds (CMFG) documentation
 ################################################
  
  
@@ -16,8 +16,6 @@ Project by Heliana Luparello, Diego Garcia Lambas, Ezequiel Boero & Marcelo Lare
 A python virtual environment is suggested to work with this project.
 Requirements are listed in the project home directory file:
 ``requirements.txt``.
-
-
 
 
 ***************
@@ -39,7 +37,11 @@ Getting Started
 
    api/gettingstarted
    api/usage
+   api/parser
+   api/cmfg
    api/pixelsky
+   api/process
+   api/run_experiment
    api/test
 
 ***********************

@@ -1,8 +1,9 @@
 import numpy as np
 import math as m
 
+
 def rt_axes(config):
-     
+
     N_r = config.p.r_n_bins
     r_breaks = np.linspace(config.p.r_start, config.p.r_stop, N_r+1)
     r_breaks = r_breaks.value
@@ -14,13 +15,12 @@ def rt_axes(config):
     t_means = (t_breaks[1:]+t_breaks[:-1])/2
 
     return r_breaks, r_means, t_breaks, t_means
-                                                         
 
 
 def profiles(H, K, config):
 
     r_breaks, r_means, t_breaks, t_means = rt_axes(config)
-                                                       
+
     N_r = config.p.r_n_bins
     N_t = config.p.theta_n_bins
 
@@ -35,11 +35,11 @@ def profiles(H, K, config):
     # promedio de los perfiles (todas las galaxias pesan igual)
     mean_dT_cells = Ht / np.maximum(Kt, 1)
     prof_avg = mean_dT_cells.mean(axis=1)
-    assert(len(prof_avg)==N_r)
+    assert(len(prof_avg) == N_r)
 
     # perfil promedio del stacking
     prof_stack = Ht.sum(axis=1) / np.maximum(Kt.sum(axis=1), 1)
-    assert(len(prof_stack)==N_r)
+    assert(len(prof_stack) == N_r)
 
     para = []
     perp = []
@@ -52,12 +52,12 @@ def profiles(H, K, config):
 
     mean_dT_cells_trans = mean_dT_cells.transpose()
     prof_para = mean_dT_cells_trans[para].mean(axis=0)
-    prof_perp = mean_dT_cells_trans[perp].mean(axis=0)         
+    prof_perp = mean_dT_cells_trans[perp].mean(axis=0)
     prof_all = mean_dT_cells_trans.mean(axis=0)
-     
-    assert(len(prof_para)==N_r)
-    assert(len(prof_perp)==N_r)
-    assert(len(prof_all)==N_r)
+
+    assert(len(prof_para) == N_r)
+    assert(len(prof_perp) == N_r)
+    assert(len(prof_all) == N_r)
 
     return mean_dT_cells, prof_avg, prof_stack, prof_para, prof_perp
 
@@ -95,7 +95,7 @@ def rebin2d(M, R, T, rstart=0, tstart=None, cyclic=False):
         while j < sx:
             w = Ar[j:(j+t+d), i:(i+r+d)]
             Ar[j:(j+t+d), i:(i+r+d)] = np.sum(w)/(w.shape[0]*w.shape[1])
-            j = j + t                          
+            j = j + t
         if cyclic:
             print(i)
             p = np.sum(Ar[:j0, i:(i+r+d)] + Ar[-j0:, i:(i+r+d)])/(2*j0*r+d)
@@ -129,6 +129,7 @@ def rebin1d(Mx, My, R, rstart=0, tstart=None, cyclic=False):
         yrb.append(My[ii:(ii+R)].mean())
     return(xrb, yrb)
 
+
 def fmt(x, pos):
     """Set format for numbers in scale
     """
@@ -138,4 +139,3 @@ def fmt(x, pos):
         return r'0'
     else:
         return r'${}\times10^{{{}}}$'.format(a, b)
- 

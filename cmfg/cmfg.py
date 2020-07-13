@@ -21,12 +21,12 @@ def unwrap_run(arg, **kwarg):
     This function just call the serialized version, but allows to run
     it concurrently.
     """
-    return Correlation.run_batch(*arg, **kwarg)
+    return profile2d.run_batch(*arg, **kwarg)
 
 
-class Correlation:
+class profile2d:
     '''
-    Correlation (class): compute angular correlations in CMB maps.
+    profile2d (class): compute angular correlations in CMB maps.
 
     Methods
     -------
@@ -40,7 +40,7 @@ class Correlation:
     '''
 
     def __init__(self, config):
-        """Initialize instance of class Correlation.
+        """Initialize instance of class profile2d.
 
         This class is prepared to work with a list of centers
         and a pixelized skymap (healpix).  Both datasets must
@@ -50,6 +50,7 @@ class Correlation:
         self.centers = None
         self.map = None
         self.mask = None
+        global pipeline_check
         pipeline_check = 0
 
     def load_centers(self):
@@ -242,14 +243,14 @@ class Correlation:
         Sb_lbl = ['3', '4']
         Sc_lbl = ['5', '6']
         Sd_lbl = ['7', '8']
-        E_lbl = ['-7','-6','-5']
+        E_lbl = ['-7', '-6', '-5']
         Sno_lbl = ['10', '11', '12', '15', '16', '19', '20', '98']
         Gtypes = []
         for s in gtypes:
             opt = s.lower()
             if 'spiral' in opt or 'late' in opt:
                 opt = 'abcd'
-            noellipt = (not 'early' in opt) and (not 'elliptical' in opt)
+            noellipt = ('early' not in opt) and ('elliptical' not in opt)
             if ('a' in opt or 'sa' in opt) and noellipt:
                 Gtypes = sum([Gtypes, Sa_lbl], [])
             if ('b' in opt or 'sb' in opt) and noellipt:
@@ -280,7 +281,7 @@ class Correlation:
         for z in self.centers['v']:
             f = z > zmin and z < zmax
             filt2.append(f)
-        
+
         # filter on: elliptical isophotal orientation -----
         boamin = self.config.p.ellipt_min
         boamax = self.config.p.ellipt_max
@@ -312,15 +313,6 @@ class Correlation:
         # limit the number of centers
         self.centers = self.centers[:self.config.p.max_centers]
 
-        # filter galaxy catalog...
-        # l = ['A','X','B']
-        # spiral = [any([s in x for s in l]) for x in glx['type']]
-        # edgeon = glx['b/a'] < 0.8
-        # subset = spiral & edgeon
-        # centers = np.array(list(glx.vec[subset]))
-        #centers = pd.DataFrame(list(zip(phi_healpix, theta_healpix,
-        #                       glx['pa'])), columns=['phi','theta', 'pa'])
-
         return None
 
     def run_single(self, center):
@@ -342,10 +334,10 @@ class Correlation:
             Counts of pairs contributing to each bin
         """
 
-        if self.config.p.optimize=='repix':
+        if self.config.p.optimize == 'repix':
             # Optimize using low resolution pixels
             Ht, Kt = self.run_single_repix(center)
-        elif self.config.p.optimize=='manual':
+        elif self.config.p.optimize == 'manual':
             # Optimize using manual dilution
             Ht, Kt = self.run_single_montecarlo(center)
         else:
@@ -366,7 +358,7 @@ class Correlation:
                 rotate_pa = R.from_euler('zy', [-phi, -theta])
 
             listpixs = hp.query_disc(skymap.nside, vector, rmax,
-                                  inclusive=False, fact=4, nest=False)
+                                     inclusive=False, fact=4, nest=False)
             dists = []
             thetas = []
             temps = []
@@ -400,7 +392,7 @@ class Correlation:
             H = np.histogram2d(dists, thetas, bins=bins2d,
                                weights=temps, density=False)
             K = np.histogram2d(dists, thetas, bins=bins2d, density=False)
- 
+
             Ht = Ht + H[0]
             Kt = Kt + K[0]
 
@@ -457,15 +449,14 @@ class Correlation:
             # compute distance to center
             v = hp.pix2vec(nside_lowres, pix_lowres_id)
             w = rotate_pa.apply(v)
-            dist = hp.rotator.angdist(w, [0, 0, 1]) 
+            dist = hp.rotator.angdist(w, [0, 0, 1])
 
             # compute dilution factor
             dilute = 1 - A*np.exp(-B*np.exp(-C*dist))
 
             # compute the number of pixels in high resolution
             lps_hires = px.spread_pixels(nside_lowres, skymap.nside,
-                                         pix_lowres_id, order='ring')  
-            Nsub = len(lps_hires)
+                                         pix_lowres_id, order='ring')
 
             # dilute pixels for montecarlo estimation (based on pixels)
             Nin = int(len(lps_hires)*dilute)
@@ -498,7 +489,7 @@ class Correlation:
         H = np.histogram2d(dists, thetas, bins=bins2d,
                            weights=temps, density=False)
         K = np.histogram2d(dists, thetas, bins=bins2d, density=False)
- 
+
         Ht = Ht + H[0]
         Kt = Kt + K[0]
 
@@ -543,14 +534,14 @@ class Correlation:
         for i in imaxs:
             r = i / p.r_n_bins * rmax
             rmaxs.append(r)
-        factor = 1. #p.r_avg_fact
+        factor = 1.  # p.r_avg_fact
         listp_prev = []
         # --
 
         for ir, rmx in zip(imaxs, rmaxs):
 
             listp_now = hp.query_disc(skymap.nside, vector, rmx,
-                                  inclusive=False, fact=4, nest=False)
+                                      inclusive=False, fact=4, nest=False)
 
             listpixs = list(set(listp_now) - set(listp_prev))
 
@@ -587,7 +578,7 @@ class Correlation:
             H = np.histogram2d(dists, thetas, bins=bins2d,
                                weights=temps, density=False)
             K = np.histogram2d(dists, thetas, bins=bins2d, density=False)
- 
+
             Ht = Ht + H[0]
             Kt = Kt + K[0]
 
@@ -637,13 +628,13 @@ class Correlation:
             res = self.run_batch(centers, centers_ids)
 
         fout = (f"{p.dir_output}{p.experiment_id}"
-                   f"/profile_{p.experiment_id}.pk")
+                f"/profile_{p.experiment_id}.pk")
         if p.verbose:
             print(fout)
         pickle.dump(res, open(fout, 'wb'))
 
         # control sample
-        if p.control_n_samples > 0:  
+        if p.control_n_samples > 0:
             theta = self.centers['theta']
             phi = self.centers['phi']
             N = self.centers.shape[0]
@@ -663,7 +654,7 @@ class Correlation:
 
                 # escribir los randoms
                 fout = (f"{p.dir_output}{p.experiment_id}"
-                           f"/control_{p.experiment_id}_{i}.pk")
+                        f"/control_{p.experiment_id}_{i}.pk")
                 if p.verbose:
                     print(fout)
                 pickle.dump(res, open(fout, 'wb'))

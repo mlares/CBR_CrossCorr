@@ -90,8 +90,7 @@ class SkyMap():
     # {{{
     '''
     class SkyMap: methods for computing angular correlations in the CMB
-    methods:
-        load: loads a CMB map
+    methods: load: loads a CMB map
     '''
 
     import healpy as hp
@@ -172,9 +171,9 @@ class RadialProfile:
     class RadialProfile
     methods for computing angular correlations in the CMB
     methods:
-        set_breaks: select bin scheme for the profile
-        radialprofile: computes the radial profile
-        radialprofile_II: computes the radial profile in parallel
+    set_breaks: select bin scheme for the profile
+    radialprofile: computes the radial profile
+    radialprofile_II: computes the radial profile in parallel
     ''' 
 
     def __init__(self, breaks=[0], Nran=0):
@@ -389,7 +388,7 @@ class AnisotropicProfile:
     function of the angle wrt the position angle of the galaxy and the
     radial distance
     methods:
-        set_breaks: select bin scheme for the profile
+    set_breaks: select bin scheme for the profile
     ''' 
 
     def __init__(self, breaks=[0], Nran=0):
@@ -471,19 +470,15 @@ class AnisotropicProfile:
         """radialprofile(self, skymap) : computes the radial profile of
         CMB pixels around a selected center
  
-       armar la matriz del perfil (bineado en r y o)
-
-       recorrer la lista de centros
-
-          rotar: armar la matriz de rotacion con angulos de Euler
-
-          recorrer lista de pixels
-
-              calcular el angulo entre la direccion del disco y la direccion al pixel
-              calcular la distancia angular entre el centro de la glx y el pixel
-              binear esas dos angulos y guardar                           
-
-
+        Pasos:
+        armar la matriz del perfil (bineado en r y o)
+        recorrer la lista de centros
+        rotar: armar la matriz de rotacion con angulos de Euler
+        recorrer lista de pixels
+        Objetivo:
+        calcular el angulo entre la direccion del disco y la direccion al pixel
+        calcular la distancia angular entre el centro de la glx y el pixel
+        binear esas dos angulos y guardar                           
         """ 
 
         # en la version paralela hace un solo centro cada vez
@@ -597,8 +592,8 @@ class Correlation:
     class Correlation
     methods for computing angular correlations in the CMB
     methods:
-        set_breaks: select bin scheme for the profile
-        radialprofile: computes the radial profilee
+    set_breaks: select bin scheme for the profile
+    radialprofile: computes the radial profilee
     ''' 
 
     def __init__(self, breaks=[0], skymask=None, nside=256, nran=0, njobs=1):
@@ -673,7 +668,7 @@ class Correlation:
     #}}}
 
 
-class PixelTools:                      ancing strip porn
+class PixelTools:
     #{{{
     
     def spread_pixels(self, Nside_low, Nside_high, ID):

@@ -651,3 +651,18 @@ class Parser(ConfigParser):
             except FileExistsError:
                 # directory already exists
                 pass
+
+        if self.filename != DEFAULT_INI:
+            rootfn = self.filename.split('.ini')[0].split('/')[-1]
+            experiment_id = self['experiment']['experiment_ID']
+            if rootfn != experiment_id:
+                r = input(f"Warning: the ID for the experiment: "
+                          f"{experiment_id}\n         "
+                          f"is different from the filename: {rootfn},\n"
+                          f"proceed anyway? ")
+                ans = choice_yn(r, default_choice=False)
+            else:
+                ans = True
+            if not ans:
+                print("Please fix filename or experiment index and try again.")
+                exit()  

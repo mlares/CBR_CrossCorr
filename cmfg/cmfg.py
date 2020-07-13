@@ -426,6 +426,9 @@ class Correlation:
         """
         from PixelSky import PixelTools
 
+        if self.config.p.verbose:
+            print('Entering RUN with REPIX optimization')
+
         skymap = self.map
         bins2d, rmax, Ht, Kt, norm_factor = self.initialize_counters(center[1])
 
@@ -448,9 +451,6 @@ class Correlation:
         listp_coarse = hp.query_disc(nside_lowres, vector, rmax,
                                      inclusive=False, fact=4, nest=False)
         px = PixelTools()
-        lps_hires = px.spread_pixels(nside_lowres, skymap.nside,
-                                     listp_coarse, order='ring')  
-
         listpixs = []
         for pix_lowres_id in listp_coarse:
 
@@ -630,27 +630,29 @@ class Correlation:
 
         # run on sample data
         if run_parallel:
-            H, K = self.run_batch_II()
+            res = self.run_batch_II()
         else:
             centers = self.centers
             centers_ids = range(len(centers))
-            H, K = self.run_batch(centers, centers_ids)
+            res = self.run_batch(centers, centers_ids)
+
+        fout = (f"{p.dir_output}{p.experiment_id}"
+                   f"/profile_{p.experiment_id}.pk")
+        if p.verbose:
+            print(fout)
+        pickle.dump(res, open(fout, 'wb'))
 
         # control sample
-        if p.control_sample:  
+        if p.control_n_samples > 0:  
             theta = self.centers['theta']
             phi = self.centers['phi']
+            N = self.centers.shape[0]
             for i in range(p.control_n_samples):
-                N = self.centers.shape[0]
                 phi = [random()*2*pi for _ in range(N)]
                 cos_theta = [random()*2.-1. for _ in range(N)]
                 theta = [acos(r) for r in cos_theta]
                 self.centers['theta'] = theta
                 self.centers['phi'] = phi
-
-                if p.verbose:
-                    print(f"control sample {i}"
-                          f"/{self.config.p.control_n_samples}")
 
                 if run_parallel:
                     res = self.run_batch_II()
@@ -662,8 +664,11 @@ class Correlation:
                 # escribir los randoms
                 fout = (f"{p.dir_output}{p.experiment_id}"
                            f"/control_{p.experiment_id}_{i}.pk")
+                if p.verbose:
+                    print(fout)
                 pickle.dump(res, open(fout, 'wb'))
 
+        H, K = res
         return H, K
 
     def run_batch(self, centers, index):

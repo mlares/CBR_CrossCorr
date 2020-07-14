@@ -31,7 +31,7 @@ else:
 # ====================== LOAD DATA ===============================
 
 f_input = (f"{config.p.dir_output}{config.p.experiment_id}"
-           f"/R_{config.p.experiment_id}.pk")
+           f"/profile_{config.p.experiment_id}.pk")
 print(f_input)
 
 with open(f_input, 'rb') as f:
@@ -51,7 +51,7 @@ N_t = config.p.theta_n_bins
 control = []
 for r in range(config.p.control_n_samples):
 
-    f_input = (f"{config.p.dir_output}{config.p.experiment_id}"
+    f_input = (f"{config.filenames.dir_output}{config.p.experiment_id}"
                f"/control_{config.p.experiment_id}_{r}.pk")
     print(f_input)
 

@@ -165,19 +165,27 @@ class Parser(ConfigParser):
         plot_format = self['out']['plot_format']
         plot_ftype = self['out']['plot_ftype']
 
-        names = 'experiment_id \
-                 datadir_cmb \
-                 filedata_cmb_mapa \
-                 filedata_cmb_mask \
-                 datadir_glx \
-                 filedata_glx \
-                 pickle_name_root \
-                 pickle_name_ext \
-                 dir_plots \
-                 plot_name_root \
-                 plot_ftype \
-                 plot_format'
+        dir_output = self['out']['dir_output']
+        dir_plots = self['out']['dir_plots']
+        choice = self['out']['clobber']
+        overwrite = choice_yn(choice, default_choice=False)
 
+        names = ['experiment_id',
+                 'datadir_cmb',
+                 'filedata_cmb_mapa',
+                 'filedata_cmb_mask',
+                 'datadir_glx',
+                 'filedata_glx',
+                 'pickle_name_root',
+                 'pickle_name_ext',
+                 'dir_plots',
+                 'plot_name_root',
+                 'plot_ftype',
+                 'plot_format',
+                 'dir_output',
+                 'overwrite']
+
+        names = ' '.join(names)
         parset = namedtuple('pars', names)
 
         res = parset(experiment_id,
@@ -191,8 +199,9 @@ class Parser(ConfigParser):
                      dir_plots,
                      plot_name_root,
                      plot_ftype,
-                     plot_format)
-
+                     plot_format,
+                     dir_output,
+                     overwrite)
         self.filenames = res
 
     def load_config(self, keys=None, values=None, nran=None,
@@ -213,47 +222,89 @@ class Parser(ConfigParser):
         """
         from collections import namedtuple
 
-        if isinstance(keys, list):
-            # override configuration file with arguments
-            if len(keys) != len(values):
-                print('Error overriding parameters (using file values)')
-            else:
-                for k, v in zip(keys, values):
-                    for sec in self.sections():
-                        has = self.has_option(sec, k)
-                        if has:
-                            self[sec][k] = v
+        # Obligatory parameters 
+        # --------------------------------------------------------
 
-        experiment_id = self['experiment']['experiment_id']
+        # List of mandatory parameters:
+        secs = ['experiment',
+                'run', 'run', 'run', 'run',
+                'run', 'run', 'run', 'run']
 
-        n_jobs = int(self['run']['n_jobs'])
+        pars = ['experiment_id',
+                'theta_start', 'theta_stop', 'theta_n_bins', 'theta_units',
+                'r_start', 'r_stop', 'r_n_bins', 'r_units'] 
 
-        adaptative_resolution = self['run']['adaptative_resolution']
+        res = list()
+        for sec, par in zip(secs, pars):
+            try:
+                rpar = self[sec][par]
+                res.append(rpar)
+            except:
+                raise ValueError(f"ERROR: Please check {par} parameter\n"
+                                 f"in section {sec} "
+                                 f"in the configuration file {self.filename}.")
 
-        dir_output = self['out']['dir_output']
-        dir_plots = self['out']['dir_plots']
+        # experiment_id
+        experiment_id = res[0]
 
-        max_centers = self['glx']['max_centers']
-        try:
-            int(max_centers)
-        except Exception:
-            max_centers = None
+        # theta partition
+        theta_start = res[1]
+        theta_stop = res[2]
+        theta_n_bins = int(res[3])
+
+        theta_units_str = res[4]
+        if theta_units_str == 'arcmin':
+            theta_units = u.arcmin
+        elif theta_units_str == 'arcsec':
+            theta_units = u.arcsec
+        elif theta_units_str == 'rad':
+            theta_units = u.rad
+        elif theta_units_str == 'deg':
+            theta_units = u.deg
         else:
-            max_centers = int(max_centers)
+            theta_units = 1. 
 
-        choice = self['glx']['control_sample']
-        control_sample = choice_yn(choice, default_choice=False)
+        if is_number(theta_start):
+            theta_start = float(theta_start)
+            num = 1.
+        elif 'pi' in theta_start:
+            n = theta_start.replace('pi', '').replace('*', '')
+            try:
+                float(n)
+            except Exception:
+                num = 1.
+            else:
+                num = float(n)
+            theta_start = num * np.pi
+        else:
+            print('Error: number not recognized in theta_start')
+            exit()
+        theta_start = theta_start*theta_units
 
-        choice = self['glx']['control_ranmap']
-        control_ranmap = choice_yn(choice, default_choice=False)
+        if is_number(theta_stop):
+            theta_stop = float(theta_stop)
+            num = 1.
+        elif 'pi' in theta_stop:
+            n = theta_stop.replace('pi', '').replace('*', '')
+            try:
+                float(n)
+            except Exception:
+                num = 1.
+            else:
+                num = float(n)
+            theta_stop = num * np.pi
+        else:
+            print('Error: number not recognized in theta_stop')
+            exit()
+        theta_stop = theta_stop*theta_units
 
-        choice = self['glx']['control_angles']
-        control_angles = choice_yn(choice, default_choice=False)
+        # r partition (radial distance to center)
+        r_start = float(res[5])
+        r_stop = float(res[6])
+        r_n_bins = int(res[7])
 
-        control_n_samples = int(self['glx']['control_n_samples'])
-
+        r_units_str = res[8]
         norm_to = False
-        r_units_str = self['run']['r_units'].lower()
         if r_units_str == 'rad':
             r_units = u.rad
         if r_units_str == 'arcmin':
@@ -276,76 +327,88 @@ class Parser(ConfigParser):
         else:
             print('Warning: not recognized radial unit or normalization')
             r_units = 1.
-
-        r_start = float(self['run']['r_start'])
-        r_stop = float(self['run']['r_stop'])
-        r_start = r_start*r_units
         r_stop = r_stop*r_units
-        r_n_bins = int(self['run']['r_n_bins'])
 
-        theta_units_str = self['run']['theta_units']
-        if theta_units_str == 'arcmin':
-            theta_units = u.arcmin
-        elif theta_units_str == 'arcsec':
-            theta_units = u.arcsec
-        elif theta_units_str == 'rad':
-            theta_units = u.rad
-        elif theta_units_str == 'deg':
-            theta_units = u.deg
+        # Optional parameters parameters
+        # ----------------------------------------------------
+
+        try:
+            n_jobs = int(self['run']['n_jobs'])
+        except Exception:
+            n_jobs = 1.
+
+        try:
+            adaptative_resolution = self['run']['adaptative_resolution']
+            adaptative_resolution = choice_yn(adaptative_resolution,
+                                              default_choice=False)
+        except Exception:
+            adaptative_resolution = 'NO'
         else:
-            theta_units = 1.
-        theta_n_bins = int(self['run']['theta_n_bins'])
+            adaptative_resolution = 'NO'
 
-        theta_start = self['run']['theta_start']
-        if is_number(theta_start):
-            theta_start = float(theta_start)
-            num = 1.
-        elif 'pi' in theta_start:
-            n = theta_start.replace('pi', '').replace('*', '')
-            try:
-                float(n)
-            except Exception:
-                num = 1.
-            else:
-                num = float(n)
-            theta_start = num * np.pi
+        try:
+            max_centers = self['glx']['max_centers']
+            int(max_centers)
+        except Exception:
+            max_centers = None
         else:
-            print('Error: number not recognized in theta_start')
-            exit()
-        theta_start = theta_start*theta_units
+            max_centers = None
 
-        theta_stop = self['run']['theta_stop']
-        if is_number(theta_stop):
-            theta_stop = float(theta_stop)
-            num = 1.
-        elif 'pi' in theta_stop:
-            n = theta_stop.replace('pi', '').replace('*', '')
-            try:
-                float(n)
-            except Exception:
-                num = 1.
-            else:
-                num = float(n)
-            theta_stop = num * np.pi
+        try:
+            choice = self['glx']['control_sample']
+            control_sample = choice_yn(choice, default_choice=False)
+        except Exception:
+            control_sample = False
         else:
-            print('Error: number not recognized in theta_stop')
-            exit()
-        theta_stop = theta_stop*theta_units
+            control_sample = False
 
-        choice = self['run']['disk_align']
-        disk_align = choice_yn(choice, default_choice=False)
+        try:
+            choice = self['glx']['control_ranmap']
+            control_ranmap = choice_yn(choice, default_choice=False)
+        except Exception:
+            control_ranmap = False
+        else:
+            control_ranmap = False
 
-        choice = self['run']['adaptative_resolution']
-        adaptative_resolution = choice_yn(choice, default_choice=False)
+        try:
+            choice = self['glx']['control_angles']
+            control_angles = choice_yn(choice, default_choice=False)
+        except Exception:
+            control_angles = False
+        else:
+            control_angles = False
 
-        choice = self['run']['run_parallel']
-        run_parallel = choice_yn(choice, default_choice=False)
+        try:
+            control_n_samples = int(self['glx']['control_n_samples'])
+        except Exception:
+            control_n_samples = False
+        else:
+            control_n_samples = False
 
-        choice = self['UX']['show_progress']
-        showp = choice_yn(choice, default_choice=False)
+        try:
+            choice = self['run']['disk_align']
+            disk_align = choice_yn(choice, default_choice=False)
+        except Exception:
+            disk_align = False
+        else:
+            disk_align = False
 
-        choice = self['out']['clobber']
-        overwrite = choice_yn(choice, default_choice=False)
+        try:
+            choice = self['run']['run_parallel']
+            run_parallel = choice_yn(choice, default_choice=False)
+        except Exception:
+            run_parallel = False
+        else:
+            run_parallel = False
+
+        try:
+            choice = self['UX']['show_progress']
+            showp = choice_yn(choice, default_choice=False)
+        except Exception:
+            showp = False
+        else:
+            showp = False
+
 
         choice = self['UX']['verbose']
         verbose = choice_yn(choice, default_choice=True)
@@ -476,6 +539,23 @@ class Parser(ConfigParser):
         dilute_B = float(dilute_B)
         dilute_C = float(dilute_C)
 
+        # Override parameter values, if required
+        # -------------------------------------------------------------
+
+        if isinstance(keys, list):
+            # override configuration file with arguments
+            if len(keys) != len(values):
+                print('Error overriding parameters (using file values)')
+            else:
+                for k, v in zip(keys, values):
+                    for sec in self.sections():
+                        has = self.has_option(sec, k)
+                        if has:
+                            self[sec][k] = v
+
+        # Make named tuple
+        # --------------------------------------------------------
+
         names = ['experiment_id',
                  'n_jobs',
                  'control_sample',
@@ -514,15 +594,10 @@ class Parser(ConfigParser):
                  'verbose',
                  'run_parallel',
                  'showp',
-                 'overwrite',
-                 'dir_output',
-                 'dir_plots',
                  'optimize']
 
         names = ' '.join(names)
-
         parset = namedtuple('pars', names)
-
         res = parset(experiment_id,
                      n_jobs,
                      control_sample,
@@ -561,9 +636,6 @@ class Parser(ConfigParser):
                      verbose,
                      run_parallel,
                      showp,
-                     overwrite,
-                     dir_output,
-                     dir_plots,
                      optimize)
 
         self.p = res
@@ -590,8 +662,8 @@ class Parser(ConfigParser):
             print('Checking settings...')
 
         # Check or create output directory for the current experiment
-        if path.isdir(self.p.dir_output):
-            dir_exp = (f"{self.p.dir_output}/"
+        if path.isdir(self.filenames.dir_output):
+            dir_exp = (f"{self.filenames.dir_output}/"
                        f"{self.p.experiment_id}")
             try:
                 makedirs(dir_exp)
@@ -601,11 +673,11 @@ class Parser(ConfigParser):
                 pass
                 # directory already exists
         else:
-            msg = f"Directory {self.p.dir_output} does not exist!"
+            msg = f"Directory {self.filenames.dir_output} does not exist!"
             raise NotADirectoryError(msg)
 
         # plots directory
-        if not path.isdir(self.p.dir_plots):
+        if not path.isdir(self.filenames.dir_plots):
             print(f"Directory {self.p.dir_plots} does not exist")
 
             try:
@@ -617,8 +689,8 @@ class Parser(ConfigParser):
                 pass
 
         # plots directory for this experiment
-        dir_plt = (f"{self.p.dir_plots}/"
-                   f"{self.p.experiment_id}")
+        dir_plt = (f"{self.filenames.dir_plots}/"
+                   f"{self.filenames.experiment_id}")
 
         if not path.isdir(dir_plt):
             print(f"Directory {dir_plt} does not exist")

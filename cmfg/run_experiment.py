@@ -17,10 +17,13 @@ X.select_subsample_centers()
 
 print(f"Number of centers in subsample: {X.centers.shape[0]}")
 
+from sys import exit
+exit()
+
 X.load_tracers()
 res = X.run()
 H, K = res
 
-fout = (f"{config.p.dir_output}{config.p.experiment_id}"
+fout = (f"{config.filenames.dir_output}{config.p.experiment_id}"
         f"/R_{config.p.experiment_id}.pk")
 pickle.dump(res, open(fout, 'wb'))

@@ -3,9 +3,9 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-################################################
+#################################################
 Cosmic Microwave Foregrounds (CMFG) documentation
-################################################
+#################################################
  
  
 The purpose of this project is to compute the cross correlations between selected centers and the cosmic background radiation.
@@ -37,6 +37,17 @@ Getting Started
 
    api/gettingstarted
    api/usage
+   api/description
+   api/parsing
+   api/visualization
+
+*******************
+Module description
+*******************
+
+.. toctree::
+   :maxdepth: 2
+
    api/parser
    api/cmfg
    api/pixelsky

@@ -100,7 +100,7 @@ Configuration files
 Interactive usage
 =================
 
-For a simple test, go to src3 and run:
+For a simple test, go to cmfg and run:
 
 .. code-block::
 

@@ -610,6 +610,7 @@ class profile2d:
             exit()
 
         p = self.config.p
+        fn = self.config.filenames
 
         if isinstance(parallel, bool):
             run_parallel = parallel
@@ -627,7 +628,7 @@ class profile2d:
             centers_ids = range(len(centers))
             res = self.run_batch(centers, centers_ids)
 
-        fout = (f"{p.dir_output}{p.experiment_id}"
+        fout = (f"{fn.dir_output}{p.experiment_id}"
                 f"/profile_{p.experiment_id}.pk")
         if p.verbose:
             print(fout)
@@ -653,7 +654,7 @@ class profile2d:
                     res = self.run_batch(centers, centers_ids)
 
                 # escribir los randoms
-                fout = (f"{p.dir_output}{p.experiment_id}"
+                fout = (f"{fn.dir_output}{p.experiment_id}"
                         f"/control_{p.experiment_id}_{i}.pk")
                 if p.verbose:
                     print(fout)

@@ -267,58 +267,79 @@ The following are optional fields for a given experiment:
 
 Detailed description of the optional fields:
 
-max_centers
+**max_centers**
+   Limit the number of centers to a maximum value.  'no' for no
+   limitation.
+**control_sample**
+   If True, galaxy positions are shuffled randomly in the sky.
+   Options: Y/N
+**control_n_samples**
+   If a number greater than zero, run control_n_samples control samples
+**control_ranmap**
+   Shuffle temperatures in pixels
+**control_angles**
+   Randomize position angles
+**n_jobs**
+   Number of threads for parallel computation
+**run_parallel**
+   Run parallel computation (Options: Y/N)
+**r_avg_cuts**
+   List if indices to dilute the number of pixels in average
+   temperature estimation.  See :ref:`manual optimization<optim_manual>` for more details.
+**r_avg_fact**
+   Factor to dilute the number of pixels in average
+   temperature estimation.  See :ref:`manual optimization<optim_manual>` for more details.
+**adaptative_resolution**
+   Choice if using adaptative resolution in pixel schemes. See
+   :ref:`depletion function<optim_depletion>` for more details.
+**adaptative_res_nside**
+   Healpix nside for low resolution map if
+   using adaptative resolution in pixel schemes. See
+   :ref:`depletion function<optim_depletion>` for more details.
+**adaptative_res_dilut**
+   Additional dilution factor in if
+   using adaptative resolution in pixel schemes. See
+   :ref:`depletion function<optim_depletion>` for more details.
+**disk_align**
+   Compute profile aligning all galaxy disks in the stacking
+**galaxy_types**
+   Selection of galaxy types. Based on `2MASS XSC documentation <http://tdc-www.harvard.edu/2mrs/2mrs_readme.html>`_.  Options:
+
+   * early
+   * late
+   * Sa
+   * Sb
+   * Sc
+   * Sd
+   
+   Also several type are allowed, e.g., 
+   
+   * Sc Sd
+
+**redshift_min**
    description
-control_sample
+**redshift_max**
    description
-control_n_samples
+**ellipt_min**
    description
-control_ranmap
+**ellipt_max**
    description
-control_angles
+**glx_angsize_min**
    description
-n_jobs
+**glx_angsize_max**
    description
-run_parallel
+**glx_angsize_unit**
    description
-r_avg_cuts
+**glx_physize_min**
    description
-r_avg_fact
+**glx_physize_max**
    description
-adaptative_resolution
+**glx_physize_unit**
    description
-adaptative_res_nside
+**show_progress**
    description
-adaptative_res_dilut
+**verbose**
    description
-disk_align
-   description
-galaxy_types
-   description
-redshift_min
-   description
-redshift_max
-   description
-ellipt_min
-   description
-ellipt_max
-   description
-glx_angsize_min
-   description
-glx_angsize_max
-   description
-glx_angsize_unit
-   description
-glx_physize_min
-   description
-glx_physize_max
-   description
-glx_physize_unit
-   description
-show_progress
-   description
-verbose
-   description
-interactive
+**interactive**
    description
 

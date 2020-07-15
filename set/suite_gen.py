@@ -32,7 +32,6 @@ for row in suite.iter_rows(min_row=1, max_row=1):
 parset = namedtuple('pars', nms)
 
 
-
 source_dir = './'
 template_file = 'SYSH_config_template.ini'
 templateLoader = jinja2.FileSystemLoader(searchpath=source_dir)
@@ -70,7 +69,10 @@ for row in suite.iter_rows(min_row=first_row, max_row=last_row):
     target.write(template_intro.render(p=p))
     target.close()
 
+"""
+    TO DO:
 
+    Make a template ini file
+    Make a program that read a partial ini file and generates a complete one
 
-
-
+"""

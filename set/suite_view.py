@@ -30,5 +30,3 @@ sacar = ['n_jobs', 'verbose', 'run_parallel', 'showp', 'overwrite',
 df2 = df = dfa.drop(columns=sacar)
  
 df2.to_excel('../set/settings_TRNT.xlsx')
-
-

@@ -1,4 +1,3 @@
-
 # experiment, parsing and math
 import cmfg
 from Parser import Parser
@@ -27,8 +26,6 @@ print(f_input)
 with open(f_input, 'rb') as f:
     H, K = pickle.load(f)
 
-
-
 Ht = np.zeros([config.p.r_n_bins, config.p.theta_n_bins])
 for h in H:
     Ht = Ht + h
@@ -47,16 +44,11 @@ prof_tot = Ht.sum(axis=1) / np.maximum(Kt.sum(axis=1), 1)
 h = profile.transpose()
 #h = H[0].transpose()
 
-
-
 R = [8, 8, 8, 8, 16, 16]
 T = [8, 8, 4, 2, 2, 1]
 J = [0, 0, 0, 0, 0, 0]
 
 A = rebin(h, R, T, tstart=J, cyclic=False)
-
-
-
 
 Nrad = config.p.r_n_bins
 Nth = config.p.theta_n_bins
@@ -71,7 +63,6 @@ azs = azs.value
 azs = azs - (azs[1]-azs[0])/2
 r, th = np.meshgrid(rad, azm.value)
 
-
 fig = plt.figure(figsize=(8,5))
 ax1 = fig.add_subplot(221, projection='polar')
 ax1.pcolormesh(th, r, h, cmap=Mycmap,
@@ -83,19 +74,14 @@ ax2.pcolormesh(th, r, A, cmap=Mycmap,
 fig.savefig('plot_002.png')
 plt.close()
 
-
- 
 fig = plt.figure(figsize=(6,6))
 ax = fig.add_subplot(projection='polar')
 ax.pcolormesh(th, r, h, cmap=Mycmap, linestyle='None')
 fig.savefig('plot_003.png')
 plt.close()
 
-
 fig = plt.figure(figsize=(6,6))
 ax = fig.add_subplot(projection='polar')
 ax.pcolormesh(th, r, A, cmap=Mycmap, linestyle='None')
 fig.savefig('plot_004.png')
 plt.close()
-
-

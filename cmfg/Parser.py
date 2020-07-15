@@ -223,6 +223,21 @@ class Parser(ConfigParser):
             list of parameters as a named tuple
         """
         from collections import namedtuple
+ 
+        # Override parameter values, if required
+        # -------------------------------------------------------------
+
+        # Warning: some parameters admit numbers, other strings, check.
+        if isinstance(keys, list):
+            # override configuration file with arguments
+            if len(keys) != len(values):
+                print('Error overriding parameters (using file values)')
+            else:
+                for k, v in zip(keys, values):
+                    for sec in self.sections():
+                        has = self.has_option(sec, k)
+                        if has:
+                            self[sec][k] = v 
 
         # Obligatory parameters 
         # --------------------------------------------------------
@@ -347,7 +362,13 @@ class Parser(ConfigParser):
 
         try:
             max_centers = self['glx']['max_centers']
-            max_centers = int(max_centers)
+
+            if is_number(max_centers):
+                max_centers = int(max_centers)
+            else:
+                yn = choice_yn(max_centers, default_choice=False)
+                if not yn:
+                    max_centers = -1
         except KeyError:
             max_centers = -1
 
@@ -534,11 +555,6 @@ class Parser(ConfigParser):
             dilute_A = 0.
             dilute_B = 8
             dilute_C = 15
-        else:
-            choice = None
-            dilute_A = 0.
-            dilute_B = 8
-            dilute_C = 15
 
         if is_iterable(choice):
             dilut_pars = self['run']['adaptative_res_dilut'].split(' ')
@@ -559,21 +575,6 @@ class Parser(ConfigParser):
         dilute_A = float(dilute_A)
         dilute_B = float(dilute_B)
         dilute_C = float(dilute_C)
-
-        # Override parameter values, if required
-        # -------------------------------------------------------------
-
-        # Warning: some parameters admit numbers, other strings, check.
-        if isinstance(keys, list):
-            # override configuration file with arguments
-            if len(keys) != len(values):
-                print('Error overriding parameters (using file values)')
-            else:
-                for k, v in zip(keys, values):
-                    for sec in self.sections():
-                        has = self.has_option(sec, k)
-                        if has:
-                            self[sec][k] = v
 
         # Make named tuple
         # --------------------------------------------------------

@@ -14,6 +14,13 @@ from sys import exit
 
 pipeline_check = 0
 
+def deplete_profile(A, B, C, r):
+    """
+    Profile to dilute the number of pixels in rings.
+    """
+    import numpy as np
+    dilute = 1 - A*np.exp(-B*np.exp(-C*r))
+    return dilute
 
 def unwrap_run(arg, **kwarg):
     """Wrap the serial function for parallel run.
@@ -334,7 +341,6 @@ class profile2d:
         K : array like
             Counts of pairs contributing to each bin
         """
-
         if self.config.p.optimize == 'repix':
             # Optimize using low resolution pixels
             Ht, Kt = self.run_single_repix(center)
@@ -419,9 +425,6 @@ class profile2d:
         """
         from PixelSky import PixelTools
 
-        if self.config.p.verbose:
-            print('Entering RUN with REPIX optimization')
-
         skymap = self.map
         bins2d, rmax, Ht, Kt, norm_factor = self.initialize_counters(center[1])
 
@@ -453,7 +456,7 @@ class profile2d:
             dist = hp.rotator.angdist(w, [0, 0, 1])
 
             # compute dilution factor
-            dilute = 1 - A*np.exp(-B*np.exp(-C*dist))
+            dilute = deplete_profile(A, B, C, dist)
 
             # compute the number of pixels in high resolution
             lps_hires = px.spread_pixels(nside_lowres, skymap.nside,
@@ -794,6 +797,59 @@ class profile2d:
                 w = rotate_pa.apply(v)
                 # w must be ~ [0,0,1]
                 print(v, w)
+
+    def show_dilution(self):
+        """
+        Show the dilution function in pixel optimization.
+
+        The parameters are taken from the settings.
+        """
+        from matplotlib import pyplot as plt
+        import numpy as np
+
+        A = self.config.p.dilute_A
+        B = self.config.p.dilute_B
+        C = self.config.p.dilute_C
+
+        print(A, B, C)
+
+        fig = plt.figure(figsize=(6, 6))
+        ax = fig.add_subplot()
+
+        print(self.centers)
+
+        rmaxs = []
+        for center in self.centers.iterrows():
+            res = self.initialize_counters(center[1])
+            bins2d, rmax, Ht, Kt, norm_factor = res
+            rmaxs.append(rmax)
+
+        rmmx = max(rmaxs)
+        r = np.linspace(0, rmmx, 500)
+
+        for center in self.centers.iterrows():
+            res = self.initialize_counters(center[1])
+            bins2d, rmax, Ht, Kt, norm_factor = res
+            dilute = deplete_profile(A, B, C, r)
+            ax.plot(r, dilute,
+                    color='cadetblue', alpha=0.6, linewidth=3)
+
+        for r in rmaxs:
+            ax.plot([r, r], [0, deplete_profile(A, B, C, r)],
+                    color='slategrey', alpha=0.6, linewidth=1)
+
+        ax.set_xlabel('radial distance, r [rads]')
+        ax.set_ylabel(r'depletion factor, $\beta$(r)')
+        ax.text(0.5*rmmx, 0.9, r"$\beta$(r) = 1 - A*exp[-B*exp(-C*r)]")
+        ax.text(0.5*rmmx, 0.85, f"A = {A}")
+        ax.text(0.5*rmmx, 0.8, f"B = {B}")
+        ax.text(0.5*rmmx, 0.75, f"C = {C}")
+        plt.tight_layout()
+        fname = (f"{self.config.filenames.dir_plots}"
+                 f"{self.config.p.experiment_id}"
+                 f"/depletion_{self.config.p.experiment_id}.png")
+        fig.savefig(fname)
+        plt.close('all')
 
 
 def test_rotation(N):

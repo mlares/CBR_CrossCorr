@@ -40,6 +40,7 @@ Getting Started
    api/description
    api/parsing
    api/visualization
+   api/optimizations
 
 *******************
 Module description

@@ -311,7 +311,8 @@ class profile2d:
         self.centers = self.centers[filt]
 
         # limit the number of centers
-        self.centers = self.centers[:self.config.p.max_centers]
+        if self.config.p.max_centers > 0:
+            self.centers = self.centers[:self.config.p.max_centers]
 
         return None
 
@@ -534,7 +535,7 @@ class profile2d:
         for i in imaxs:
             r = i / p.r_n_bins * rmax
             rmaxs.append(r)
-        factor = 1.  # p.r_avg_fact
+        factor = p.r_avg_fact
         listp_prev = []
         # --
 

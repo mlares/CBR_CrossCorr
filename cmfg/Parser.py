@@ -11,6 +11,8 @@ def is_number(string):
         return True
     except ValueError:
         return False
+    except TypeError:
+        return False
 
 
 def choice_yn(string, default_choice=None):
@@ -270,11 +272,9 @@ class Parser(ConfigParser):
         elif 'pi' in theta_start:
             n = theta_start.replace('pi', '').replace('*', '')
             try:
-                float(n)
+                num = float(n)
             except Exception:
                 num = 1.
-            else:
-                num = float(n)
             theta_start = num * np.pi
         else:
             print('Error: number not recognized in theta_start')
@@ -327,6 +327,7 @@ class Parser(ConfigParser):
         else:
             print('Warning: not recognized radial unit or normalization')
             r_units = 1.
+        r_start = r_start*r_units
         r_stop = r_stop*r_units
 
         # Optional parameters parameters
@@ -334,106 +335,122 @@ class Parser(ConfigParser):
 
         try:
             n_jobs = int(self['run']['n_jobs'])
-        except Exception:
+        except KeyError:
             n_jobs = 1.
 
         try:
             adaptative_resolution = self['run']['adaptative_resolution']
             adaptative_resolution = choice_yn(adaptative_resolution,
                                               default_choice=False)
-        except Exception:
-            adaptative_resolution = 'NO'
-        else:
-            adaptative_resolution = 'NO'
+        except KeyError:
+            adaptative_resolution = False
 
         try:
             max_centers = self['glx']['max_centers']
-            int(max_centers)
-        except Exception:
-            max_centers = None
-        else:
-            max_centers = None
+            max_centers = int(max_centers)
+        except KeyError:
+            max_centers = -1
 
         try:
             choice = self['glx']['control_sample']
             control_sample = choice_yn(choice, default_choice=False)
-        except Exception:
-            control_sample = False
-        else:
+        except KeyError:
             control_sample = False
 
         try:
             choice = self['glx']['control_ranmap']
             control_ranmap = choice_yn(choice, default_choice=False)
-        except Exception:
-            control_ranmap = False
-        else:
+        except KeyError:
             control_ranmap = False
 
         try:
             choice = self['glx']['control_angles']
             control_angles = choice_yn(choice, default_choice=False)
-        except Exception:
-            control_angles = False
-        else:
+        except KeyError:
             control_angles = False
 
         try:
             control_n_samples = int(self['glx']['control_n_samples'])
-        except Exception:
-            control_n_samples = False
-        else:
+        except KeyError:
             control_n_samples = False
 
         try:
             choice = self['run']['disk_align']
             disk_align = choice_yn(choice, default_choice=False)
-        except Exception:
-            disk_align = False
-        else:
+        except KeyError:
             disk_align = False
 
         try:
             choice = self['run']['run_parallel']
             run_parallel = choice_yn(choice, default_choice=False)
-        except Exception:
-            run_parallel = False
-        else:
+        except KeyError:
             run_parallel = False
 
         try:
             choice = self['UX']['show_progress']
             showp = choice_yn(choice, default_choice=False)
-        except Exception:
-            showp = False
-        else:
+        except KeyError:
             showp = False
 
-
-        choice = self['UX']['verbose']
-        verbose = choice_yn(choice, default_choice=True)
+        try:
+            choice = self['UX']['verbose']
+            verbose = choice_yn(choice, default_choice=True)
+        except KeyError:
+            verbose = False
         if verbose:
             print('loading parameters...')
 
-        galaxy_types = self['run']['galaxy_types']
-        galaxy_types = galaxy_types.split(' ')
+        try:
+            galaxy_types = self['run']['galaxy_types']
+            galaxy_types = galaxy_types.split(' ')
+        except KeyError:
+            galaxy_types = [] 
 
-        redshift_min = float(self['run']['redshift_min'])
-        redshift_max = float(self['run']['redshift_max'])
-        ellipt_min = float(self['run']['ellipt_min'])
-        ellipt_max = float(self['run']['ellipt_max'])
+        try:
+            redshift_min = float(self['run']['redshift_min'])
+        except KeyError:
+            redshift_min = 0.
 
-        r_avg_cuts = self['run']['r_avg_cuts'].split(' ')
-        if is_number(r_avg_cuts[0]):
-            r_avg_cuts = [int(i) for i in r_avg_cuts]
-            r_avg_cuts = [i if i < r_n_bins else r_n_bins for i in r_avg_cuts]
+        try:
+            redshift_max = float(self['run']['redshift_max'])
+        except KeyError:
+            redshift_max = 1000.
+            
+        try:
+            ellipt_min = float(self['run']['ellipt_min'])
+        except KeyError:
+            ellipt_min = 0.
+            
+        try:
+            ellipt_max = float(self['run']['ellipt_max'])
+        except KeyError:
+            ellipt_max = 1.
+
+        try:
+            r_avg_cuts = self['run']['r_avg_cuts'].split(' ')
+            if is_number(r_avg_cuts[0]):
+                r_avg_cuts = [int(i) for i in r_avg_cuts]
+                r_avg_cuts = [i if i < r_n_bins else r_n_bins for i in r_avg_cuts]
+            else:
+                r_avg_cuts = [r_n_bins]
+            if r_avg_cuts[-1] < r_n_bins:
+                r_avg_cuts.append(r_n_bins)
+        except KeyError:
+            r_avg_cuts = list()
+
+        try:
+            r_avg_fact = float(self['run']['r_avg_fact'])
+        except KeyError:
+            r_avg_fact = 1.
+
+        if adaptative_resolution:
+            optimize = 'repix'
+        elif len(r_avg_cuts) > 1:
+            optimize = 'manual'
         else:
-            r_avg_cuts = [r_n_bins]
-        if r_avg_cuts[-1] < r_n_bins:
-            r_avg_cuts.append(r_n_bins)
+            optimize = False
 
-        r_avg_fact = float(self['run']['r_avg_fact'])
-
+        # this is an alternative way to check if parameter is set.
         for key in self['run']:
             if key == 'glx_angsize_min':
                 if is_number(self['run']['glx_angsize_min']):
@@ -504,20 +521,25 @@ class Parser(ConfigParser):
                     p_unit = None
         glx_physize_unit = p_unit
 
-        if adaptative_resolution:
-            optimize = 'repix'
-        elif len(r_avg_cuts) > 1:
-            optimize = 'manual'
-        else:
-            optimize = False
-
         # (if no adaptative_res_nside is set, default is no # optimization)
         adaptative_res_nside = int(self['cmb']['filedata_cmb_nside'])
         for key in self['run']:
             if key == 'adaptative_res_nside':
                 adaptative_res_nside = int(self['run']['adaptative_res_nside'])
 
-        choice = self['run']['adaptative_res_dilut']
+        try:
+            choice = self['run']['adaptative_res_dilut']
+        except KeyError:
+            choice = None
+            dilute_A = 0.
+            dilute_B = 8
+            dilute_C = 15
+        else:
+            choice = None
+            dilute_A = 0.
+            dilute_B = 8
+            dilute_C = 15
+
         if is_iterable(choice):
             dilut_pars = self['run']['adaptative_res_dilut'].split(' ')
             if len(dilut_pars) == 1:
@@ -530,11 +552,10 @@ class Parser(ConfigParser):
                 dilute_A = 0.9
                 dilute_B = 8
                 dilute_C = 15
-        else:
-            if is_number(choice):
-                dilute_A = choice
-                dilute_B = 8
-                dilute_C = 15
+        elif is_number(choice):
+            dilute_A = choice
+            dilute_B = 8
+            dilute_C = 15
         dilute_A = float(dilute_A)
         dilute_B = float(dilute_B)
         dilute_C = float(dilute_C)
@@ -542,6 +563,7 @@ class Parser(ConfigParser):
         # Override parameter values, if required
         # -------------------------------------------------------------
 
+        # Warning: some parameters admit numbers, other strings, check.
         if isinstance(keys, list):
             # override configuration file with arguments
             if len(keys) != len(values):

@@ -30,7 +30,7 @@ else:
 
 # ====================== LOAD DATA ===============================
 
-f_input = (f"{config.p.dir_output}{config.p.experiment_id}"
+f_input = (f"{config.filenames.dir_output}{config.p.experiment_id}"
            f"/profile_{config.p.experiment_id}.pk")
 print(f_input)
 

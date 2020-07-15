@@ -56,7 +56,7 @@ class Parser(ConfigParser):
             None
         Raises
         ------
-            None
+            Instantiate a Parser object.
         """
         super().__init__()
         self.message = None
@@ -72,7 +72,7 @@ class Parser(ConfigParser):
 
         Parameters
         ----------
-            filename (str): the file name of the map to be read
+            None
 
         Raises
         ------
@@ -80,7 +80,7 @@ class Parser(ConfigParser):
 
         Returns
         -------
-            None
+            Updates 'filename' variable in Parser class object.
         """
         from os.path import isfile
 
@@ -150,7 +150,9 @@ class Parser(ConfigParser):
 
         Returns
         -------
-            list of filenames
+        self.filenames: named tuple
+            Updates the list of filenames and the list of parameters
+            in a Parser class object.
         """
         from collections import namedtuple
 
@@ -206,13 +208,15 @@ class Parser(ConfigParser):
                      overwrite)
         self.filenames = res
 
-    def load_config(self, keys=None, values=None, nran=None,
-                    *args, **kwargs):
+    def load_config(self, keys=None, values=None, *args, **kwargs):
         """Load parameters from config file.
 
         Parameters
         ----------
-            None
+        keys: list of strings
+            parameters to be reset (mandatory) or set (optional)
+        values: list of strings
+            Values of the parameters to be reset (mandatory) or set (optional)
 
         Raises
         ------
@@ -220,7 +224,8 @@ class Parser(ConfigParser):
 
         Returns
         -------
-            list of parameters as a named tuple
+        self.config: named tuple
+            Updates list of parameters as a named tuple
         """
         from collections import namedtuple
  
@@ -740,3 +745,127 @@ class Parser(ConfigParser):
             if not ans:
                 print("Please fix filename or experiment index and try again.")
                 exit()
+
+
+# class ExperimentSuites(Parser):
+# 
+#     def GenDefaultConfigFile():
+# 
+#     def suite_generate():
+# 
+#     def suite():
+# 
+# 
+# # experiment, parsing and math
+# import cmfg
+# from Parser import Parser
+# from sys import argv
+# import numpy as np
+# import pickle
+# import math as m
+# import pandas as pd
+# 
+# ind_min = 12
+# ind_max = 22
+# 
+# inifile = '../set/config_TRNT_' + str(ind_min).zfill(3) + '.ini'
+# config = Parser(inifile)
+# 
+# cnames = config.p._fields
+# dfa = pd.DataFrame(columns=cnames)
+# 
+# for i, ids in enumerate(range(ind_min, ind_max+1)):
+#     inifile = '../set/config_TRNT_' + str(ids).zfill(3) + '.ini'
+#     print(inifile)
+#     config = Parser(inifile)
+#     dfa.loc[i] = config.p
+# 
+# sacar = ['n_jobs', 'verbose', 'run_parallel', 'showp', 'overwrite',
+#          'dir_output', 'dir_plots']
+# df2 = df = dfa.drop(columns=sacar)
+#  
+# df2.to_excel('../set/settings_TRNT.xlsx') 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+#  
+# from openpyxl import load_workbook
+# from collections import namedtuple
+# import jinja2
+# from os.path import join as pathjoin
+# 
+# wb = load_workbook('SYSH_suite.xlsx')
+# print(wb.sheetnames)
+# 
+# first_column = 'A'
+# last_column = 'O'
+# 
+# first_row = 2
+# last_row = 26
+# 
+# col_range = f"{first_column}:{last_column}"
+# 
+# suite = wb['SAYSHELL']
+# s=suite[col_range]
+#  
+# for row in suite.iter_rows(min_row=1, max_row=1):
+#     names = []
+#     nms = ''
+#     for cell in row:
+#         names.append(cell.value)
+#         nms = nms + str(cell.value) + ' '
+#     print(names)
+#     nms = nms.strip()
+# 
+# parset = namedtuple('pars', nms)
+# 
+# 
+# source_dir = './'
+# template_file = 'SYSH_config_template.ini'
+# templateLoader = jinja2.FileSystemLoader(searchpath=source_dir)
+# 
+# latex_jinja_env = jinja2.Environment(
+#     block_start_string=r"\BLOCK{",
+#     block_end_string='}',
+#     variable_start_string=r'\VAR{',
+#     variable_end_string='}',
+#     comment_start_string=r'\#{',
+#     comment_end_string='}',
+#     line_statement_prefix='%%',
+#     line_comment_prefix='%#',
+#     trim_blocks=True,
+#     autoescape=False,
+#     loader=templateLoader
+# )
+# template_intro = latex_jinja_env.get_template(template_file)
+# 
+# 
+# k = 0
+# for row in suite.iter_rows(min_row=first_row, max_row=last_row):
+#     r = []
+#     k += 1
+#     for cell in row:
+#         r.append(str(cell.value).strip())
+# 
+#     t = tuple(r)
+#     p = parset(*t)
+# 
+#     ininame = 'config_SYSH_' + str(k).zfill(3) + '.ini'
+# 
+#     filename = pathjoin(source_dir, ininame)
+#     target = open(filename, 'w')
+#     target.write(template_intro.render(p=p))
+#     target.close()
+# 
+# """
+#     TO DO:
+# 
+#     Make a template ini file
+#     Make a program that read a partial ini file and generates a complete one
+# 
+# """                            

@@ -60,7 +60,6 @@ coverage.xml
 *.pot
 
 # Sphinx documentation
-doc
 doc/build/
 
 # PyBuilder

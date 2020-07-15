@@ -317,29 +317,43 @@ Detailed description of the optional fields:
    * Sc Sd
 
 **redshift_min**
-   description
+   Minimum redshift for the galaxy sample
 **redshift_max**
-   description
+   Maximum redshift for the galaxy sample
 **ellipt_min**
-   description
+   Minimum ellipticity for the galaxy sample
 **ellipt_max**
-   description
+   Maximum ellipticity for the galaxy sample
 **glx_angsize_min**
-   description
+   Minimum angular size for the galaxy sample
 **glx_angsize_max**
-   description
+   Maximum angular size for the galaxy sample
 **glx_angsize_unit**
-   description
+   Angular size units for the galaxy sample
 **glx_physize_min**
-   description
+   Minimum physical size for the galaxy sample
 **glx_physize_max**
-   description
+   Maximum physical size for the galaxy sample
 **glx_physize_unit**
-   description
+   Physical size units for the galaxy sample
 **show_progress**
-   description
+   Show the progress of computations
 **verbose**
-   description
+   Show several progress and information variables
 **interactive**
-   description
+   Return results instead of writing them
+
+
+Generation and summary of configuration files
+==============================================
+
+We provide tools to manage the sets of experiments performed throught
+configuration files.
+
+
+* set/suite_gen.py
+* set/suite_view.py
+
+
+
 
